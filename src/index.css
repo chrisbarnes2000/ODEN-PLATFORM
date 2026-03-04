@@ -1,0 +1,119 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Libre+Baskerville:ital,wght@0,400;0,700;1,400&display=swap');
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+  --font-serif: "Libre Baskerville", Georgia, serif;
+  
+  --color-bg: #0a0a0a;
+  --color-panel: #111111;
+  --color-surface: #1a1a1a;
+  --color-border: #2a2a2a;
+  --color-border2: #3a3a3a;
+  --color-text: #e5ded3;
+  --color-muted: #9a9183;
+  --color-accent: #c8923f;
+  --color-accent2: #a0722c;
+}
+
+@layer base {
+  body {
+    @apply bg-bg text-text font-mono text-[13px] overflow-hidden;
+  }
+
+  /* Custom Scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-bg;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-border2 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-muted;
+  }
+}
+
+.tab-btn {
+  @apply px-4 py-2 bg-none border-none border-b-2 border-transparent text-muted font-mono text-[11px] tracking-[2px] cursor-pointer transition-all whitespace-nowrap;
+}
+
+.tab-btn:hover {
+  @apply text-text;
+}
+
+.tab-btn.active {
+  @apply text-accent border-b-accent;
+}
+
+.btn {
+  @apply bg-none border border-accent text-accent font-mono text-[11px] tracking-[2px] px-4 py-2 cursor-pointer transition-all;
+}
+
+.btn:hover {
+  @apply bg-accent text-bg;
+}
+
+.btn-sm {
+  @apply px-2.5 py-1 text-[10px] tracking-[1px];
+}
+
+.btn-m {
+  @apply border-border2 text-muted;
+}
+
+.btn-m:hover {
+  @apply bg-border2 text-text;
+}
+
+.btn-d {
+  @apply border-[#a04040] text-[#a04040];
+}
+
+.btn-d:hover {
+  @apply bg-[#a04040] text-bg;
+}
+
+.btn-i {
+  @apply border-[#7a9e7e] text-[#7a9e7e];
+}
+
+.btn-i:hover {
+  @apply bg-[#7a9e7e] text-bg;
+}
+
+.frow {
+  @apply mb-3.5;
+}
+
+.frow label {
+  @apply block text-[10px] tracking-[1.5px] uppercase text-muted mb-1;
+}
+
+.frow input, .frow select, .frow textarea {
+  @apply w-full bg-surface border border-border text-text font-mono text-[12px] p-2 outline-none focus:border-accent;
+}
+
+.frow textarea {
+  @apply min-h-[70px] resize-y leading-[1.5];
+}
+
+.mbox {
+  @apply bg-surface border border-border2 p-4.5 mb-5 text-[12px] leading-[1.8];
+}
+
+.mbox h3 {
+  @apply font-serif text-accent mb-2.5 text-[14px];
+}
+
+.mbox p {
+  @apply text-muted mb-2.5;
+}
+

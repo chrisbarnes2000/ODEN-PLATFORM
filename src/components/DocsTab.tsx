@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, Link as LinkIcon, X, FileText, Database, Layers } from 'lucide-react';
 import { ProjectData, DocumentData, NodeData } from '../types';
-import { getText, deleteText } from '../services/documentStore';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -13,17 +12,13 @@ interface DocsTabProps {
   project: ProjectData;
   setProject: React.Dispatch<React.SetStateAction<ProjectData>>;
   initialEditingDocId?: string | null;
-  initialOpenOriginalDocId?: string | null;
   onClearEditing?: () => void;
 }
 
-export default function DocsTab({ project, setProject, initialEditingDocId, initialOpenOriginalDocId, onClearEditing }: DocsTabProps) {
+export default function DocsTab({ project, setProject, initialEditingDocId, onClearEditing }: DocsTabProps) {
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [mobileView, setMobileView] = useState<'form' | 'list'>('list');
-  const [isViewingOriginal, setIsViewingOriginal] = useState(false);
-  const [originalTextView, setOriginalTextView] = useState<string>('');
-
 
   React.useEffect(() => {
     if (initialEditingDocId) {
@@ -37,17 +32,6 @@ export default function DocsTab({ project, setProject, initialEditingDocId, init
       }
     }
   }, [initialEditingDocId, project.documents, onClearEditing]);
-  // Auto-open original import text when requested (e.g., jump from a node)
-  React.useEffect(() => {
-    if (initialOpenOriginalDocId) {
-      const doc = project.documents.find(d => d.id === initialOpenOriginalDocId);
-      if (doc) {
-        openOriginalText(doc);
-        onClearEditing?.();
-      }
-    }
-  }, [initialOpenOriginalDocId, project.documents, onClearEditing]);
-
   const [newDoc, setNewDoc] = useState<Partial<DocumentData>>({
     title: '',
     category: 'Correspondence',
@@ -99,12 +83,8 @@ export default function DocsTab({ project, setProject, initialEditingDocId, init
     setEditingDocId(null);
   };
 
-  const deleteDoc = async (id: string) => {
+  const deleteDoc = (id: string) => {
     if (!confirm('Delete this document?')) return;
-    const doc = project.documents.find(d => d.id === id);
-    if (doc?.originalTextStorage === 'indexeddb' && doc.originalTextKey) {
-      try { await deleteText(doc.originalTextKey); } catch {}
-    }
     setProject(prev => ({
       ...prev,
       documents: prev.documents.filter(d => d.id !== id),
@@ -116,30 +96,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, init
     setNewDoc(doc);
   };
 
-  
-  const openOriginalText = async (doc: DocumentData) => {
-    try {
-      if (doc.originalTextStorage === 'inline' && doc.originalText) {
-        setOriginalTextView(doc.originalText);
-        setIsViewingOriginal(true);
-        return;
-      }
-      if (doc.originalTextStorage === 'indexeddb' && doc.originalTextKey) {
-        const txt = await getText(doc.originalTextKey);
-        setOriginalTextView(txt || '');
-        setIsViewingOriginal(true);
-        return;
-      }
-      setOriginalTextView('');
-      setIsViewingOriginal(true);
-    } catch (err) {
-      console.error(err);
-      alert('Could not load original import text.');
-    }
-  };
-
   return (
-    <>
     <div className="flex flex-col h-full overflow-hidden relative">
       {/* Mobile Toggle */}
       <div className="flex md:hidden bg-panel border-b border-border shrink-0">
@@ -290,32 +247,6 @@ export default function DocsTab({ project, setProject, initialEditingDocId, init
           />
         </div>
         <div className="frow">
-          <label>Original Import Text</label>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              className="btn btn-m flex items-center gap-2"
-              onClick={() => {
-                if (editingDocId) {
-                  const doc = project.documents.find(d => d.id === editingDocId);
-                  if (doc) openOriginalText(doc);
-                } else {
-                  // preview based on the form state
-                  openOriginalText(newDoc as any);
-                }
-              }}
-            >
-              <FileText className="w-4 h-4" /> View
-            </button>
-            <div className="text-[11px] text-muted self-center">
-              {((newDoc as any).originalTextStorage === 'indexeddb') ? 'Stored in IndexedDB (large import)' :
-               ((newDoc as any).originalTextStorage === 'inline') ? 'Stored inline' :
-               '—'}
-            </div>
-          </div>
-        </div>
-
-        <div className="frow">
           <label>Link to Nodes</label>
           <select 
             multiple 
@@ -414,15 +345,6 @@ export default function DocsTab({ project, setProject, initialEditingDocId, init
                       <LinkIcon size={10} /> VIEW
                     </a>
                   )}
-                  {(doc.originalTextStorage && doc.originalTextStorage !== 'none') && (
-                    <button
-                      onClick={() => openOriginalText(doc)}
-                      className="text-muted hover:text-accent text-[10px] flex items-center gap-1"
-                      title="View the raw imported text stored for this document"
-                    >
-                      <FileText size={10} /> ORIGINAL
-                    </button>
-                  )}
                   <button 
                     onClick={() => editDoc(doc)}
                     className="text-muted hover:text-accent text-[10px] flex items-center gap-1"
@@ -449,38 +371,5 @@ export default function DocsTab({ project, setProject, initialEditingDocId, init
       </div>
     </div>
   </div>
-    {/* Original Text Viewer */}
-          {isViewingOriginal && (
-            <div className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4">
-              <div className="w-full max-w-3xl bg-panel border border-border rounded-xl overflow-hidden shadow-xl">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-border">
-                  <div className="text-[11px] tracking-[2px] uppercase text-muted">Original Import Text</div>
-                  <button
-                    className="btn btn-m"
-                    onClick={() => { setIsViewingOriginal(false); setOriginalTextView(''); }}
-                  >
-                    Close
-                  </button>
-                </div>
-                <div className="p-4">
-                  <textarea
-                    readOnly
-                    className="w-full min-h-[320px] bg-bg border border-border rounded-lg p-3 text-[12px] leading-relaxed"
-                    value={originalTextView || ''}
-                  />
-                  {!originalTextView && (
-                    <div className="mt-2 text-[11px] text-muted">
-                      No stored import text found for this document.
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          )}
-    
-    
-    
-        </>
 );
 }
-      

@@ -16,16 +16,13 @@ export interface NodeData {
   description: string;
   tags: string[];
   sources: NodeSource[];
-  /** Registry-backed sources attached to this node */
-  sourceIds?: string[];
-  /** Documents this node is derived from / linked to */
-  documentIds?: string[];
   sectionId?: string;
   placeholder?: boolean;
   sentiment?: string;
   eventType?: string;
   date?: string; // For temporal playback
   phaseId?: string; // Linked to Blueprint phase
+  confidence?: 'high' | 'medium' | 'low';
   x: number;
   y: number;
   fx?: number | null;
@@ -39,6 +36,7 @@ export interface EdgeData {
   label: string;
   weight: number;
   date?: string; // For temporal playback
+  confidence?: 'high' | 'medium' | 'low';
 }
 
 export interface ContextSection {
@@ -62,12 +60,6 @@ export interface DocumentData {
   imageData?: string;
   fileName?: string;
   mimeType?: string;
-  /** Original imported text (small imports stored inline) */
-  originalText?: string;
-  /** IndexedDB key for large imported text */
-  originalTextKey?: string;
-  /** Where the original text lives */
-  originalTextStorage?: 'inline' | 'indexeddb' | 'none';
 }
 
 export interface SourceData {
@@ -78,6 +70,22 @@ export interface SourceData {
   rg: string;
   url: string;
   notes: string;
+  type: 'url' | 'email' | 'document' | 'other';
+  sender?: string;
+  recipient?: string;
+  subject?: string;
+}
+
+export interface Proposal {
+  id: string;
+  type: 'create_node' | 'create_edge' | 'merge_nodes' | 'attach_evidence' | 'promote_placeholder' | 'update_node';
+  data: any; // Specific to the proposal type
+  justification: string;
+  reasoning?: string; // Detailed methodology reasoning
+  sourceSnippet?: string;
+  sourceDocId?: string;
+  status: 'pending' | 'approved' | 'dismissed';
+  confidence?: 'high' | 'medium' | 'low';
 }
 
 export interface ProjectData {
@@ -90,6 +98,5 @@ export interface ProjectData {
   blueprint: Record<string, string>;
   completedPhases: string[];
   aiInsight?: string;
-  /** Optional: a single central anchor node for the investigation */
-  mainEventId?: string;
+  proposals: Proposal[];
 }

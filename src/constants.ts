@@ -1,3 +1,42 @@
+import { NodeType } from './types';
+
+export const COLORS: Record<NodeType, string> = {
+  case: '#ff4444', // Bright Red
+  event: '#ff8800', // Orange-Red
+  actor: '#c8923f', // Gold
+  institution: '#7a9e7e', // Sage
+  gap: '#5a8fc4', // Blue
+  location: '#b07e85', // Dusty Rose
+  media: '#c49a6c', // Tan
+  document: '#7ab8b0', // Teal
+  concept: '#a87ab8', // Purple
+  object: '#7a9e6a', // Olive
+  relation: '#c47a8a', // Pink
+  financial: '#a8c44a', // Lime
+  witness: '#7aaed4', // Sky Blue
+  suspect: '#c46a4a', // Terracotta
+  law: '#6a8ab8', // Steel Blue
+  science: '#7ac4b8', // Mint
+  family: '#c4606a', // Coral
+  network: '#4ab8a8', // Turquoise
+  period: '#c4a882', // Sand
+  alias: '#c4907a', // Peach
+  rumor: '#b87a9a', // Magenta
+  pattern: '#6a8aaa', // Slate
+};
+
+export const EDGE_COLORS: Record<string, string> = {
+  financial: '#a8c44a', // Lime
+  personal: '#c4606a', // Coral
+  professional: '#6a8ab8', // Steel Blue
+  conflict: '#ff4444', // Bright Red
+  evidence: '#7ab8b0', // Teal
+  temporal: '#c4a882', // Sand
+  spatial: '#b07e85', // Dusty Rose
+  import: '#444444',   // Dark Gray
+  other: '#888888',    // Gray
+};
+
 export const PHASES = [
   {
     id: 'ph1',

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit2, Link as LinkIcon, ExternalLink, X } from 'lucide-react';
+import { Plus, Trash2, Edit2, Link as LinkIcon, X } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { ProjectData, ContextSection, NodeData } from '../types';
 import { clsx, type ClassValue } from 'clsx';
@@ -24,7 +24,6 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
   const [isEditing, setIsEditing] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
-  const [attachSourceId, setAttachSourceId] = useState<string>('');
 
   useEffect(() => {
     if (initialSectionId) {
@@ -36,43 +35,6 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
 
   const activeSection = project.sections.find(s => s.id === activeSecId);
 
-  const attachSource = (sourceId: string) => {
-    if (!activeSecId) return;
-    setProject(prev => ({
-      ...prev,
-      sections: prev.sections.map(s => {
-        if (s.id !== activeSecId) return s;
-        const ids = new Set(s.sourceIds ?? []);
-        ids.add(sourceId);
-        return { ...s, sourceIds: Array.from(ids) };
-      }),
-    }));
-  };
-
-  const detachSource = (sourceId: string) => {
-    if (!activeSecId) return;
-    setProject(prev => ({
-      ...prev,
-      sections: prev.sections.map(s =>
-        s.id === activeSecId ? { ...s, sourceIds: (s.sourceIds ?? []).filter(id => id !== sourceId) } : s
-      ),
-    }));
-  };
-
-  const pullSourcesFromNodes = () => {
-    if (!activeSection) return;
-    const ids = new Set<string>(activeSection.sourceIds ?? []);
-    activeSection.linkedNodeIds.forEach(nid => {
-      const node = project.nodes.find(n => n.id === nid);
-      (node?.sourceIds ?? []).forEach(sid => ids.add(sid));
-    });
-    setProject(prev => ({
-      ...prev,
-      sections: prev.sections.map(s => (s.id === activeSection.id ? { ...s, sourceIds: Array.from(ids) } : s)),
-    }));
-  };
-
-
   const addSection = () => {
     if (!newSecHdg.trim()) return;
     const newSec: ContextSection = {
@@ -81,7 +43,6 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
       heading: newSecHdg,
       body: '',
       linkedNodeIds: [],
-      sourceIds: [],
     };
     setProject(prev => ({
       ...prev,
@@ -314,81 +275,6 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
                 })}
               </div>
             </div>
-
-            <div className="mt-8 border-t border-border pt-8">
-              <div className="flex items-center justify-between gap-3 mb-4">
-                <div className="text-[13px] text-muted tracking-[1px] uppercase">
-                  Sources ({(activeSection.sourceIds ?? []).length})
-                </div>
-                <button
-                  className="btn btn-sm"
-                  onClick={pullSourcesFromNodes}
-                  title="Pull sources from linked nodes"
-                >
-                  PULL FROM NODES
-                </button>
-              </div>
-
-              <div className="flex gap-4 mb-4">
-                <select
-                  className="flex-1 bg-surface border border-border text-text font-mono text-[12px] p-2 outline-none focus:border-accent"
-                  value={attachSourceId}
-                  onChange={e => setAttachSourceId(e.target.value)}
-                >
-                  <option value="">— attach a registered source —</option>
-                  {project.sources
-                    .filter(src => !(activeSection.sourceIds ?? []).includes(src.id))
-                    .map(src => (
-                      <option key={src.id} value={src.id}>
-                        {src.title}{src.date ? ` (${src.date})` : ''}
-                      </option>
-                    ))}
-                </select>
-                <button
-                  className="btn btn-accent btn-sm"
-                  onClick={() => {
-                    if (!attachSourceId) return;
-                    attachSource(attachSourceId);
-                    setAttachSourceId('');
-                  }}
-                  disabled={!attachSourceId}
-                >
-                  ATTACH
-                </button>
-              </div>
-
-              <div className="space-y-2">
-                {(activeSection.sourceIds ?? []).map(sid => {
-                  const src = project.sources.find(s => s.id === sid);
-                  if (!src) return null;
-                  return (
-                    <div key={sid} className="flex items-center gap-3 bg-surface border border-border p-2 text-[12px]">
-                      <LinkIcon size={14} className="text-accent" />
-                      <div className="flex-1 min-w-0">
-                        <div className="font-bold text-accent truncate">{src.title}</div>
-                        <div className="text-muted text-[11px]">
-                          {[src.institution, src.date, src.rg].filter(Boolean).join(' • ')}
-                        </div>
-                      </div>
-                      {src.url && (
-                        <a className="text-muted hover:text-accent" href={src.url} target="_blank" rel="noreferrer" title="Open link">
-                          <ExternalLink size={14} />
-                        </a>
-                      )}
-                      <button onClick={() => detachSource(sid)} className="text-muted hover:text-[#a04040]" title="Detach">
-                        <X size={14} />
-                      </button>
-                    </div>
-                  );
-                })}
-                {(activeSection.sourceIds ?? []).length === 0 && (
-                  <div className="text-muted text-[12px]">
-                    No sources attached yet. Attach from the registry, or pull from linked nodes.
-                  </div>
-                )}
-              </div>
-            </div>
-
           </div>
         )}
       </div>

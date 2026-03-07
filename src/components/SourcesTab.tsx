@@ -1,6 +1,22 @@
-import React, { useMemo, useState } from 'react';
-import { Plus, Trash2, Edit2, ExternalLink, Link as LinkIcon, X } from 'lucide-react';
+import React, { useState } from 'react';
+import { 
+  Link as LinkIcon, 
+  Trash2, 
+  Plus, 
+  ExternalLink, 
+  Sparkles, 
+  Loader2, 
+  Edit2, 
+  X, 
+  Mail, 
+  Globe, 
+  FileText, 
+  Search,
+  ChevronRight,
+  Info
+} from 'lucide-react';
 import { ProjectData, SourceData } from '../types';
+import { extractUrlsFromNodes } from '../services/geminiService';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -10,398 +26,423 @@ function cn(...inputs: ClassValue[]) {
 
 interface SourcesTabProps {
   project: ProjectData;
-  setProject: React.Dispatch<React.SetStateAction<ProjectData>>;
+  setProject: (p: ProjectData) => void;
+  onSelectNode: (id: string) => void;
 }
 
-type DraftSource = Omit<SourceData, 'id'> & { id?: string };
+export default function SourcesTab({ project, setProject, onSelectNode }: SourcesTabProps) {
+  const [isExtracting, setIsExtracting] = useState(false);
+  const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
+  const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
+  const [searchQuery, setSearchQuery] = useState('');
 
-const emptyDraft = (): DraftSource => ({
-  title: '',
-  institution: '',
-  date: '',
-  rg: '',
-  url: '',
-  notes: '',
-});
+  const [newSource, setNewSource] = useState<Partial<SourceData>>({
+    title: '',
+    institution: '',
+    date: new Date().toISOString().split('T')[0],
+    rg: 'N/A',
+    url: 'https://',
+    notes: '',
+    type: 'url'
+  });
 
-export default function SourcesTab({ project, setProject }: SourcesTabProps) {
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [draft, setDraft] = useState<DraftSource>(emptyDraft());
-  const [query, setQuery] = useState('');
-  const [usedOnly, setUsedOnly] = useState(false);
-
-  const usage = useMemo(() => {
-    const nodeCountBySource: Record<string, number> = {};
-    const contextCountBySource: Record<string, number> = {};
-
-    for (const n of project.nodes) {
-      for (const id of (n.sourceIds ?? [])) {
-        nodeCountBySource[id] = (nodeCountBySource[id] ?? 0) + 1;
-      }
-    }
-    for (const sec of project.sections) {
-      for (const id of (sec.sourceIds ?? [])) {
-        contextCountBySource[id] = (contextCountBySource[id] ?? 0) + 1;
-      }
-    }
-
-    const usedIds = new Set<string>([
-      ...Object.keys(nodeCountBySource),
-      ...Object.keys(contextCountBySource),
-    ]);
-
-    return { nodeCountBySource, contextCountBySource, usedIds };
-  }, [project.nodes, project.sections]);
-
-  const pullSourcesInUse = () => {
-    setUsedOnly(true);
-    setQuery('');
-  };
-
-  const copyUsedBibliography = async () => {
-    const used = project.sources
-      .filter(s => usage.usedIds.has(s.id))
-      .map(s => {
-        const bits = [s.title];
-        const meta = [s.institution, s.date, s.rg].filter(Boolean).join(' • ');
-        if (meta) bits.push(`(${meta})`);
-        if (s.url) bits.push(s.url);
-        return bits.join(' ');
-      })
-      .join('\n');
-
+  const handleExtractUrls = async () => {
+    setIsExtracting(true);
     try {
-      await navigator.clipboard.writeText(used || '');
-      // lightweight feedback (no toast system in this build)
-      alert('Copied used sources list to clipboard.');
-    } catch {
-      alert('Could not copy automatically. Your browser may block clipboard access.');
+      const results = await extractUrlsFromNodes(project.nodes);
+      
+      const newSources: SourceData[] = [
+        ...results.urls
+          .filter(url => !project.sources.some(s => s.url === url))
+          .map((url, i) => ({
+            id: `src-ext-url-${Date.now()}-${i}`,
+            title: `Extracted: ${url.split('/')[2] || 'Source'}`,
+            institution: 'AI Extraction',
+            date: new Date().toISOString().split('T')[0],
+            rg: 'N/A',
+            url,
+            notes: 'Extracted from node descriptions and existing sources.',
+            type: 'url' as const
+          })),
+        ...results.emails
+          .filter(email => !project.sources.some(s => s.type === 'email' && s.subject === email.subject))
+          .map((email, i) => ({
+            id: `src-ext-email-${Date.now()}-${i}`,
+            title: `Email: ${email.subject}`,
+            institution: 'AI Extraction',
+            date: email.date || new Date().toISOString().split('T')[0],
+            rg: 'N/A',
+            url: email.url || '',
+            notes: `From: ${email.sender}\nTo: ${email.recipient}\nSubject: ${email.subject}`,
+            type: 'email' as const,
+            sender: email.sender,
+            recipient: email.recipient,
+            subject: email.subject
+          }))
+      ];
+      
+      if (newSources.length > 0) {
+        setProject({
+          ...project,
+          sources: [...project.sources, ...newSources]
+        });
+      }
+    } catch (error) {
+      console.error('Failed to extract URLs:', error);
+    } finally {
+      setIsExtracting(false);
     }
   };
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    const base = usedOnly
-      ? project.sources.filter(s => usage.usedIds.has(s.id))
-      : project.sources;
-    if (!q) return base;
-    return base.filter(s =>
-      [s.title, s.institution, s.date, s.rg, s.url, s.notes].some(v =>
-        String(v ?? '').toLowerCase().includes(q)
-      )
-    );
-  }, [project.sources, query, usedOnly, usage.usedIds]);
+  const handleAddSource = () => {
+    if (!newSource.title) return;
 
-  const openCreate = () => {
-    setDraft(emptyDraft());
-    setIsModalOpen(true);
-  };
+    const source: SourceData = {
+      id: editingSourceId || `src-${Date.now()}`,
+      title: newSource.title,
+      institution: newSource.institution || 'Manual Entry',
+      date: newSource.date || new Date().toISOString().split('T')[0],
+      rg: newSource.rg || 'N/A',
+      url: newSource.url || '',
+      notes: newSource.notes || '',
+      type: newSource.type || 'url',
+      sender: newSource.sender,
+      recipient: newSource.recipient,
+      subject: newSource.subject
+    };
 
-  const openEdit = (s: SourceData) => {
-    setDraft({ ...s });
-    setIsModalOpen(true);
-  };
-
-  const save = () => {
-    const title = draft.title.trim();
-    if (!title) return;
-
-    setProject(prev => {
-      const next = { ...prev };
-      if (!draft.id) {
-        const newSource: SourceData = {
-          id: `src-${Date.now()}`,
-          title,
-          institution: draft.institution?.trim() ?? '',
-          date: draft.date?.trim() ?? '',
-          rg: draft.rg?.trim() ?? '',
-          url: draft.url?.trim() ?? '',
-          notes: draft.notes?.trim() ?? '',
-        };
-        next.sources = [newSource, ...prev.sources];
-      } else {
-        next.sources = prev.sources.map(s => s.id === draft.id ? ({
-          ...s,
-          title,
-          institution: draft.institution?.trim() ?? '',
-          date: draft.date?.trim() ?? '',
-          rg: draft.rg?.trim() ?? '',
-          url: draft.url?.trim() ?? '',
-          notes: draft.notes?.trim() ?? '',
-        }) : s);
-      }
-      return next;
+    setProject({
+      ...project,
+      sources: editingSourceId 
+        ? project.sources.map(s => s.id === editingSourceId ? source : s)
+        : [...project.sources, source]
     });
 
-    setIsModalOpen(false);
-  };
-
-  const remove = (id: string) => {
-    setProject(prev => {
-      // Remove from registry
-      const sources = prev.sources.filter(s => s.id !== id);
-
-      // Also detach from any nodes/sections that referenced it
-      const nodes = prev.nodes.map(n => {
-        const ids = (n.sourceIds ?? []).filter(x => x !== id);
-        // Keep the legacy n.sources list intact if user manually added it.
-        // If this source was attached via registry, remove its label/url entry too.
-        const src = prev.sources.find(s => s.id === id);
-        const legacy = src
-          ? n.sources.filter(ls => !(ls.label === src.title && (src.url ? ls.url === src.url : true)))
-          : n.sources;
-
-        return { ...n, sourceIds: ids, sources: legacy };
-      });
-
-      const sections = prev.sections.map(sec => ({
-        ...sec,
-        sourceIds: (sec.sourceIds ?? []).filter(x => x !== id),
-      }));
-
-      return { ...prev, sources, nodes, sections };
+    setNewSource({
+      title: '',
+      institution: '',
+      date: new Date().toISOString().split('T')[0],
+      rg: 'N/A',
+      url: 'https://',
+      notes: '',
+      type: 'url'
     });
+    setEditingSourceId(null);
   };
+
+  const filteredSources = project.sources.filter(s => 
+    s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    s.notes.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
-    <div className="flex h-full">
-      <div className="w-full lg:w-[420px] border-r border-border bg-panel flex-shrink-0">
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <div className="text-[12px] text-muted uppercase tracking-[2px]">Sources Registry</div>
-              <div className="text-[22px] font-bold tracking-[1px]">Sources</div>
-            </div>
-            <div className="flex items-center gap-2">
-              <button
+    <div className="flex h-full overflow-hidden bg-bg">
+      {/* Sidebar: Add/Edit */}
+      <div className={cn(
+        "flex-shrink-0 border-r border-border bg-panel overflow-y-auto transition-all duration-300",
+        isSidebarExpanded ? "w-full md:w-[380px] p-6" : "w-0 p-0 border-none opacity-0"
+      )}>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="font-serif text-[18px] text-accent">
+            {editingSourceId ? 'Edit Source' : 'Add Source'}
+          </h3>
+          {editingSourceId && (
+            <button onClick={() => { setEditingSourceId(null); setNewSource({ title: '', institution: '', date: new Date().toISOString().split('T')[0], rg: 'N/A', url: 'https://', notes: '', type: 'url' }); }} className="text-muted hover:text-text">
+              <X size={16} />
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-4">
+          <div className="frow">
+            <label>Source Type</label>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => setNewSource({ ...newSource, type: 'url' })}
                 className={cn(
-                  'btn flex items-center gap-2',
-                  usedOnly ? 'btn-accent' : 'btn-ghost'
+                  "flex-1 py-2 rounded border text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all",
+                  newSource.type === 'url' ? "bg-accent/10 border-accent text-accent" : "bg-bg border-border text-muted"
                 )}
-                title="Pull sources currently attached anywhere in the graph"
-                onClick={pullSourcesInUse}
               >
-                Pull in-use
+                <Globe size={12} /> URL
               </button>
-
-              {usedOnly && (
-                <button
-                  className="btn btn-ghost flex items-center gap-2"
-                  title="Copy a bibliography-style list of sources currently in use"
-                  onClick={copyUsedBibliography}
-                >
-                  Copy list
-                </button>
-              )}
-
-              <button
-                className="btn btn-accent flex items-center gap-2"
-                onClick={openCreate}
+              <button 
+                onClick={() => setNewSource({ ...newSource, type: 'email' })}
+                className={cn(
+                  "flex-1 py-2 rounded border text-[10px] font-bold uppercase tracking-wider flex items-center justify-center gap-2 transition-all",
+                  newSource.type === 'email' ? "bg-blue-500/10 border-blue-500/50 text-blue-400" : "bg-bg border-border text-muted"
+                )}
               >
-                <Plus size={16} /> Add
+                <Mail size={12} /> Email
               </button>
             </div>
           </div>
 
-          <div className="mt-3 flex items-center gap-2">
-            <input
-              className="bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 flex-1 outline-none focus:border-accent"
-              placeholder="Search title, institution, notes..."
-              value={query}
-              onChange={e => setQuery(e.target.value)}
+          <div className="frow">
+            <label>Title</label>
+            <input 
+              type="text" 
+              placeholder="e.g. NARA Finding Aid, FOIA Response..." 
+              value={newSource.title}
+              onChange={e => setNewSource({ ...newSource, title: e.target.value })}
             />
           </div>
 
-          <div className="mt-2 flex items-center gap-2 text-[11px]">
-            <span className="text-muted">Showing:</span>
-            <button
-              className={cn('px-2 py-1 border rounded-md', usedOnly ? 'border-border text-muted hover:text-text' : 'border-accent text-accent')}
-              onClick={() => setUsedOnly(false)}
-              title="Show all registry sources"
-            >
-              All
-            </button>
-            <button
-              className={cn('px-2 py-1 border rounded-md', usedOnly ? 'border-accent text-accent' : 'border-border text-muted hover:text-text')}
-              onClick={() => pullSourcesInUse()}
-              title="Show only sources attached to nodes/contexts"
-            >
-              In use ({usage.usedIds.size})
-            </button>
+          <div className="frow">
+            <label>Institution / Controller</label>
+            <input 
+              type="text" 
+              placeholder="e.g. USDA, FBI, State Archives" 
+              value={newSource.institution}
+              onChange={e => setNewSource({ ...newSource, institution: e.target.value })}
+            />
           </div>
 
-          <div className="mt-2 text-[11px] text-muted">
-            Tip: keep the registry clean. Attach sources to nodes/contexts elsewhere — nothing here asserts truth.
+          {newSource.type === 'email' ? (
+            <>
+              <div className="frow">
+                <label>Sender</label>
+                <input 
+                  type="text" 
+                  placeholder="sender@agency.gov" 
+                  value={newSource.sender || ''}
+                  onChange={e => setNewSource({ ...newSource, sender: e.target.value })}
+                />
+              </div>
+              <div className="frow">
+                <label>Recipient</label>
+                <input 
+                  type="text" 
+                  placeholder="recipient@agency.gov" 
+                  value={newSource.recipient || ''}
+                  onChange={e => setNewSource({ ...newSource, recipient: e.target.value })}
+                />
+              </div>
+              <div className="frow">
+                <label>Subject</label>
+                <input 
+                  type="text" 
+                  placeholder="Re: Record Request #123" 
+                  value={newSource.subject || ''}
+                  onChange={e => setNewSource({ ...newSource, subject: e.target.value })}
+                />
+              </div>
+            </>
+          ) : (
+            <div className="frow">
+              <label>URL</label>
+              <input 
+                type="text" 
+                placeholder="https://..." 
+                value={newSource.url}
+                onChange={e => setNewSource({ ...newSource, url: e.target.value })}
+              />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="frow">
+              <label>Date</label>
+              <input 
+                type="date" 
+                value={newSource.date}
+                onChange={e => setNewSource({ ...newSource, date: e.target.value })}
+              />
+            </div>
+            <div className="frow">
+              <label>Record Group (RG)</label>
+              <input 
+                type="text" 
+                placeholder="RG 165" 
+                value={newSource.rg}
+                onChange={e => setNewSource({ ...newSource, rg: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="frow">
+            <label>Notes / Context</label>
+            <textarea 
+              placeholder="What does this source tell us? Any specific box or folder numbers?" 
+              className="h-24"
+              value={newSource.notes}
+              onChange={e => setNewSource({ ...newSource, notes: e.target.value })}
+            />
+          </div>
+
+          <button 
+            className="btn w-full py-3 flex items-center justify-center gap-2"
+            onClick={handleAddSource}
+          >
+            {editingSourceId ? <Save size={16} /> : <Plus size={16} />}
+            {editingSourceId ? 'UPDATE SOURCE' : 'ADD SOURCE'}
+          </button>
+
+          <div className="pt-6 border-t border-border">
+            <button 
+              onClick={handleExtractUrls}
+              disabled={isExtracting}
+              className="w-full py-3 bg-accent/5 border border-accent/20 rounded-lg text-[11px] font-bold uppercase tracking-widest text-accent hover:bg-accent/10 transition-all flex items-center justify-center gap-2"
+            >
+              {isExtracting ? <Loader2 className="animate-spin" size={14} /> : <Sparkles size={14} />}
+              AI Extract from Nodes
+            </button>
+            <button 
+              onClick={() => alert('File upload functionality would be integrated here to parse documents for sources.')}
+              className="w-full py-3 mt-2 bg-surface border border-border rounded-lg text-[11px] font-bold uppercase tracking-widest text-muted hover:text-accent hover:border-accent transition-all flex items-center justify-center gap-2"
+            >
+              <Plus size={14} />
+              Upload Source File
+            </button>
+            <p className="text-[10px] text-muted mt-2 text-center italic">
+              AI will scan node descriptions for hidden URLs and email metadata.
+            </p>
           </div>
         </div>
+      </div>
 
-        <div className="overflow-auto h-[calc(100%-140px)]">
-          {filtered.length === 0 ? (
-            <div className="p-4 text-muted text-[12px]">No sources yet.</div>
+      {/* Main Content: List */}
+      <div className="flex-1 overflow-y-auto p-8 relative">
+        <div className="max-w-5xl mx-auto">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+            <div>
+              <h2 className="text-[24px] font-serif text-accent mb-1">Investigation Sources</h2>
+              <p className="text-muted text-[14px]">The archival and digital record supporting your investigation.</p>
+            </div>
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
+              <input 
+                type="text" 
+                placeholder="Search sources..." 
+                className="pl-10 pr-4 py-2 bg-surface border border-border rounded-lg text-[13px] w-full md:w-64 focus:border-accent outline-none"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+              />
+            </div>
+          </div>
+
+          {filteredSources.length === 0 ? (
+            <div className="p-12 text-center border border-dashed border-border bg-surface/30 rounded-xl">
+              <LinkIcon size={48} className="mx-auto text-muted mb-4 opacity-20" />
+              <p className="text-muted text-[14px]">No sources found matching your search.</p>
+            </div>
           ) : (
-            <div className="divide-y divide-border">
-              {filtered.map(s => (
-                <div key={s.id} className="p-4 hover:bg-surface/40">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="font-bold text-[14px] truncate">{s.title}</div>
-                      <div className="text-[11px] text-muted mt-1">
-                        {[s.institution, s.date, s.rg].filter(Boolean).join(' • ')}
-                      </div>
-                      {s.url && (
-                        <a
-                          className="inline-flex items-center gap-1 text-[12px] text-accent mt-2 hover:underline"
-                          href={s.url}
-                          target="_blank"
-                          rel="noreferrer"
-                        >
-                          <ExternalLink size={14} />
-                          Open link
-                        </a>
-                      )}
-                      {s.notes && (
-                        <div className="text-[12px] text-muted mt-2 line-clamp-3">{s.notes}</div>
-                      )}
-                    </div>
-                    <div className="flex items-center gap-2 flex-shrink-0">
-                      <button
-                        className="icon-btn"
-                        title="Edit"
-                        onClick={() => openEdit(s)}
-                      >
-                        <Edit2 size={16} />
-                      </button>
-                      <button
-                        className="icon-btn text-red-400"
-                        title="Delete"
-                        onClick={() => remove(s.id)}
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredSources.map(src => {
+                const linkedNodes = project.nodes.filter(n => 
+                  n.sources.some(ns => ns.url === src.url) || 
+                  n.description.toLowerCase().includes(src.url.toLowerCase())
+                );
 
-                  <div className="mt-3 flex items-center gap-2 text-[11px] text-muted">
-                    <LinkIcon size={14} />
-                    Attached to{' '}
-                    <span className="text-accent">
-                      {(usage.nodeCountBySource[s.id] ?? 0)}
-                    </span>{' '}
-                    nodes and{' '}
-                    <span className="text-accent">
-                      {(usage.contextCountBySource[s.id] ?? 0)}
-                    </span>{' '}
-                    contexts
+                return (
+                  <div key={src.id} className="bg-panel border border-border p-5 rounded-xl hover:border-accent transition-all group relative">
+                    <div className="flex justify-between items-start mb-3">
+                      <div className={cn(
+                        "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded",
+                        src.type === 'email' ? "bg-blue-500/20 text-blue-400" : "bg-accent/20 text-accent"
+                      )}>
+                        {src.type === 'email' ? 'EMAIL' : (src.institution || 'SOURCE')}
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button 
+                          onClick={() => {
+                            setEditingSourceId(src.id);
+                            setNewSource(src);
+                            setIsSidebarExpanded(true);
+                          }}
+                          className="p-1 text-muted hover:text-accent"
+                        >
+                          <Edit2 size={14} />
+                        </button>
+                        <button 
+                          onClick={() => setProject({ ...project, sources: project.sources.filter(s => s.id !== src.id) })}
+                          className="p-1 text-muted hover:text-red-400"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </div>
+                    
+                    <h4 className="text-[16px] font-serif mb-2 leading-tight">{src.title}</h4>
+                    
+                    {src.type === 'email' ? (
+                      <div className="space-y-1 mb-4 bg-bg/50 p-2 rounded border border-border/30">
+                        <div className="text-[10px] text-muted truncate"><span className="font-bold text-accent/70">FROM:</span> {src.sender}</div>
+                        <div className="text-[10px] text-muted truncate"><span className="font-bold text-accent/70">TO:</span> {src.recipient}</div>
+                        <div className="text-[10px] text-muted italic">{src.date}</div>
+                      </div>
+                    ) : (
+                      <a 
+                        href={src.url} 
+                        target="_blank" 
+                        className="text-accent hover:underline text-[11px] flex items-center gap-1 mb-4 truncate"
+                      >
+                        <ExternalLink size={10} /> {src.url}
+                      </a>
+                    )}
+                    
+                    <div className="text-[11px] text-muted/80 line-clamp-3 mb-4 italic leading-relaxed">
+                      {src.notes}
+                    </div>
+                    
+                    {linkedNodes.length > 0 && (
+                      <div className="mt-4 pt-4 border-t border-border/30">
+                        <div className="text-[9px] text-muted uppercase font-bold mb-2 flex items-center gap-1">
+                          <Globe size={10} /> Linked Entities
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                          {linkedNodes.map(n => (
+                            <button 
+                              key={n.id}
+                              onClick={() => onSelectNode(n.id)}
+                              className="text-[10px] bg-surface border border-border px-2 py-0.5 hover:border-accent transition-colors rounded"
+                            >
+                              {n.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
       </div>
 
-      <div className="flex-1 p-6 overflow-auto">
-        <div className="max-w-3xl">
-          <div className="text-[12px] text-muted uppercase tracking-[2px]">How Step 4 works</div>
-          <div className="mt-2 text-[14px] leading-relaxed text-text">
-            <p className="mb-3">
-              This tab is the <span className="text-accent font-bold">registry</span>. It’s where sources live as reusable objects.
-            </p>
-            <p className="mb-3">
-              Nodes and context sections don’t store citations as raw text — they store <span className="text-accent font-bold">attachments</span> to registry entries.
-              That keeps ODEN aligned with your site: each node is an individual claim/asset, and sources are the evidence spine.
-            </p>
-            <p className="mb-3">
-              Attach sources from <span className="text-accent font-bold">Nodes & Edges</span> (per-node) or <span className="text-accent font-bold">Context</span> (per-section),
-              and use “Pull sources from nodes” inside a context section to build clean citations fast.
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4">
-          <div className="w-full max-w-[720px] bg-panel border border-border rounded-xl overflow-hidden">
-            <div className="p-4 border-b border-border flex items-center justify-between">
-              <div className="font-bold text-[14px] tracking-[1px]">
-                {draft.id ? 'Edit Source' : 'Add Source'}
-              </div>
-              <button className="icon-btn" onClick={() => setIsModalOpen(false)} title="Close">
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="md:col-span-2">
-                <label className="text-[11px] text-muted uppercase tracking-[1px]">Title</label>
-                <input
-                  className="mt-1 w-full bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 outline-none focus:border-accent"
-                  value={draft.title}
-                  onChange={e => setDraft(d => ({ ...d, title: e.target.value }))}
-                  placeholder="Arizona Gazette — April 1909"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-muted uppercase tracking-[1px]">Institution / Publisher</label>
-                <input
-                  className="mt-1 w-full bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 outline-none focus:border-accent"
-                  value={draft.institution}
-                  onChange={e => setDraft(d => ({ ...d, institution: e.target.value }))}
-                  placeholder="Arizona Gazette"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-muted uppercase tracking-[1px]">Date</label>
-                <input
-                  className="mt-1 w-full bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 outline-none focus:border-accent"
-                  value={draft.date}
-                  onChange={e => setDraft(d => ({ ...d, date: e.target.value }))}
-                  placeholder="1909-04-05"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-muted uppercase tracking-[1px]">Record Group / Ref</label>
-                <input
-                  className="mt-1 w-full bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 outline-none focus:border-accent"
-                  value={draft.rg}
-                  onChange={e => setDraft(d => ({ ...d, rg: e.target.value }))}
-                  placeholder="RG 95 / Box 2 / Folder 7"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] text-muted uppercase tracking-[1px]">Link / URL</label>
-                <input
-                  className="mt-1 w-full bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 outline-none focus:border-accent"
-                  value={draft.url}
-                  onChange={e => setDraft(d => ({ ...d, url: e.target.value }))}
-                  placeholder="https://..."
-                />
-              </div>
-
-              <div className="md:col-span-2">
-                <label className="text-[11px] text-muted uppercase tracking-[1px]">Notes</label>
-                <textarea
-                  className="mt-1 w-full h-[120px] bg-surface border border-border text-text font-mono text-[13px] px-2.5 py-2 outline-none focus:border-accent resize-none"
-                  value={draft.notes}
-                  onChange={e => setDraft(d => ({ ...d, notes: e.target.value }))}
-                  placeholder="Why this source matters, what it contains, concerns about reliability, etc."
-                />
-              </div>
-            </div>
-
-            <div className="p-4 border-t border-border flex items-center justify-end gap-2">
-              <button className="btn" onClick={() => setIsModalOpen(false)}>Cancel</button>
-              <button className="btn btn-accent" onClick={save}>
-                {draft.id ? 'Save changes' : 'Create source'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Sidebar Toggle */}
+      <button 
+        onClick={() => setIsSidebarExpanded(!isSidebarExpanded)}
+        className={cn(
+          "absolute top-1/2 -translate-y-1/2 z-20 bg-panel border border-border p-1.5 rounded-r-md hover:text-accent transition-all hidden md:block",
+          isSidebarExpanded ? "left-[380px]" : "left-0"
+        )}
+      >
+        {isSidebarExpanded ? <X size={14} /> : <ChevronRight size={14} />}
+      </button>
     </div>
+  );
+}
+
+function Save(props: any) {
+  return (
+    <svg
+      {...props}
+      xmlns="http://www.w3.org/2000/svg"
+      width="24"
+      height="24"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+    >
+      <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z" />
+      <polyline points="17 21 17 13 7 13 7 21" />
+      <polyline points="7 3 7 8 15 8" />
+    </svg>
   );
 }

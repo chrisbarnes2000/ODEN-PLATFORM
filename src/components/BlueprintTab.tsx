@@ -78,38 +78,6 @@ export default function BlueprintTab({ project, setProject, onSelectNode }: Blue
             <span className="text-[12px] text-muted italic">Your progress is tracked by the "Structural Integrity" bar above. You can close this app and come back whenever — your work is saved locally.</span>
           </div>
 
-          {/* Main Event anchor (recommended) */}
-          <div className="border border-border bg-panel p-5 mb-8 rounded-lg">
-            <div className="text-[10px] uppercase tracking-[2px] text-muted font-bold mb-2">Recommended Setup</div>
-            <div className="text-[13px] text-text/90 leading-relaxed">
-              Pick a <strong className="text-accent">Main Event</strong> as your central reference point. This gives your map a “home” so connections radiate outward from a single claim/event.
-            </div>
-            <div className="mt-3 flex gap-2 items-center">
-              <select
-                className="flex-1"
-                value={project.mainEventId || ''}
-                onChange={(e) => setProject(prev => ({ ...prev, mainEventId: e.target.value || undefined }))}
-              >
-                <option value="">— No main event set —</option>
-                {project.nodes
-                  .filter(n => n.type === 'event' || n.type === 'case')
-                  .map(n => (
-                    <option key={n.id} value={n.id}>{n.label}</option>
-                  ))}
-              </select>
-              <button
-                type="button"
-                onClick={() => setProject(prev => ({ ...prev, mainEventId: undefined }))}
-                className="px-3 py-2 text-[10px] uppercase tracking-widest font-bold border border-border bg-surface hover:bg-white/5"
-              >
-                Clear
-              </button>
-            </div>
-            <div className="text-[11px] text-muted mt-2">
-              If you don’t have an Event node yet, create one in <span className="text-accent">Nodes &amp; Edges</span> and come back.
-            </div>
-          </div>
-
           <div className="space-y-4">
             {PHASES.map((phase, idx) => {
               const phaseFields = phase.fields.map(f => f.id);

@@ -12,7 +12,7 @@ import {
   Sparkles,
   Clock,
   Flame,
-  Zap
+  BrainCircuit
 } from 'lucide-react';
 
 export default function QuickStartTab() {
@@ -22,27 +22,24 @@ export default function QuickStartTab() {
         <div className="bp-intro border-l-4 border-accent bg-surface p-6 mb-12 font-serif text-[14px] leading-relaxed">
         <strong className="text-[16px] text-accent">Welcome to ODEN</strong><br /><br />
         ODEN is a standalone research tool for investigating what the historical, institutional, or archival record can and cannot tell you about a question. Whether you are working on a <strong>cold case</strong>, tracing <strong>genealogy</strong>, or investigating <strong>institutional silence</strong>, ODEN helps you map the structural landscape of your research.<br /><br />
-        Instead of just focusing on proof, it helps you map what was happening <em>around</em> the event: how records are created, who controlled the narrative, what should exist, and where the record remains silent. It runs entirely in your browser — ODEN runs locally in your browser. Your investigation files remain on your device and are never stored on a server. 
-        Optional AI tools (Smart Import, AI Helper, and AI Insights) require an internet connection, but the rest of ODEN works entirely offline.
+        Instead of just focusing on proof, it helps you map what was happening <em>around</em> the event: how records are created, who controlled the narrative, what should exist, and where the record remains silent. It runs entirely in your browser — no account, no server, no internet required after the first load.
       </div>
 
       <div className="mb-12 bg-accent/5 border border-accent/20 p-4 rounded text-[11px] text-accent/80 flex gap-3">
         <Sparkles size={16} className="flex-shrink-0" />
         <div>
           <span className="font-bold uppercase mr-2">AI Disclaimer:</span>
-          The AI features in ODEN (Smart Import, AI Helper, and AI Insights) are constrained by the ODEN methodology: they only organize, suggest, and summarize within the structure you’ve set. ODEN does not auto-add claims to your map—everything stays user-controlled. AI output can be wrong or incomplete, so treat it as a drafting assistant, not an authority.
-
-In other words, ODEN uses AI as a **methodology assistant**, not a decision maker. The structure of your map—nodes, edges, sources, and investigation phases—acts as the guardrail system that prevents the AI from inventing conclusions or altering your research without your approval. Your data remains private and local to your browser.
+          The Smart Import feature uses AI to help distribute your information into the ODEN methodology structure. The AI does not "interpret" your research or store your data; it simply assists in mapping entities and relationships according to the site's structural framework. Your data remains private and local to your browser.
         </div>
       </div>
 
       <div className="space-y-12 mb-12">
         <section>
           <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <Layers size={20} /> 1. Work the Blueprint
+            <Layers size={20} /> 1. Work the Blueprint (Dossier)
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
-            The <strong className="text-text uppercase">Blueprint</strong> tab is your research roadmap. It walks you through a series of phases — each one asks questions that help you think about your case structurally. Start with Phase 1: Who Was There? — mapping who had the power to create or control records.
+            The <strong className="text-text uppercase">Blueprint</strong> tab is your research roadmap, now redesigned as a <strong className="text-text">Living Case File</strong>. It walks you through a series of phases — each one asks structural questions that help you think about your case. 
           </p>
         </section>
 
@@ -106,37 +103,36 @@ In other words, ODEN uses AI as a **methodology assistant**, not a decision make
 
         <section>
           <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <Zap size={20} /> 4. Get AI Insights
+            <Sparkles size={20} /> 4. AI Proposals & Smart Import
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
-            In the <strong className="text-text uppercase">Methodology</strong> tab, use the <strong className="text-text">"Generate AI Investigation Insight"</strong> button. Gemini will analyze your entire project—nodes, connections, and blueprint data—to suggest new leads, identify contradictions, and recommend next steps based on the ODEN framework.
+            ODEN uses a <strong className="text-text">Proposal-only authority model</strong>. The AI suggests, but you decide.
           </p>
-        </section>
-        <section>
-          <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <Sparkles size={20} /> 5. Use AI Helper (Suggestions Only)
-          </h3>
-          <p className="text-[13px] text-muted leading-relaxed mb-4">
-            Open the <strong className="text-text uppercase">AI Helper</strong> tab to generate cautious, evidence-aware suggestions like:
-            <em className="italic"> Node A → relationship → Node B</em>. Every suggestion comes with a short explanation of the process (why the connection was suggested).
-            Nothing is added automatically—you choose <strong className="text-text">Confirmed</strong>, <strong className="text-text">Hypothesis</strong>, or <strong className="text-text">Ignore</strong>. If a node doesn’t exist yet, ODEN can create a clearly marked placeholder.
-          </p>
+          <div className="bg-surface border border-border p-4 rounded mb-6">
+            <h4 className="text-[11px] font-bold uppercase text-accent mb-2 flex items-center gap-2">
+              <BrainCircuit size={14} /> Detecting "Gaps" and "Red Events"
+            </h4>
+            <p className="text-[12px] text-muted leading-relaxed mb-3">
+              The <strong className="text-text uppercase">Smart Import</strong> engine is specifically tuned to identify ODEN methodology elements:
+            </p>
+            <ul className="space-y-2 text-[11px] text-muted list-disc pl-4">
+              <li><strong className="text-text">Red Events:</strong> Critical claims, incidents, or turning points that anchor the investigation.</li>
+              <li><strong className="text-text">Blue Gaps:</strong> Missing records, silences, or information that <em className="italic">should</em> be present based on institutional logic but is absent.</li>
+            </ul>
+            <p className="text-[11px] text-muted mt-3 italic">
+              During import, the AI provides <strong className="text-text">Methodology Reasoning</strong> for every suggested node, explaining why it was classified as a Gap or Event.
+            </p>
+          </div>
+          <ul className="space-y-2 text-[12px] text-muted mb-4 ml-4 list-disc">
+            <li><strong>Smart Import:</strong> Upload documents or paste text. ODEN will save the file to your <strong className="text-text uppercase">Documents</strong> tab, create a summary in <strong className="text-text uppercase">Context</strong>, and generate structural proposals.</li>
+            <li><strong>Proposals Tab:</strong> Review AI suggestions for new nodes, connections, or merges. Each proposal includes a <strong className="text-text">Justification</strong> and <strong className="text-text">Methodology Reasoning</strong>.</li>
+            <li><strong>Full User Control:</strong> You can include/exclude any suggested node or edge, and edit all details (label, type, description, connections) before committing to your map.</li>
+          </ul>
         </section>
 
         <section>
           <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <Database size={20} /> 6. Track Sources
-          </h3>
-          <p className="text-[13px] text-muted leading-relaxed mb-4">
-            Use the <strong className="text-text uppercase">Sources</strong> tab as your citation registry (title, link, notes). Attach sources directly to nodes and to context sections.
-            The <strong className="text-text">Pull sources</strong> helper can show you what’s currently “in use,” and Context can pull sources from linked nodes to keep citations consistent.
-          </p>
-        </section>
-
-
-        <section>
-          <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <FileText size={20} /> 7. Write Your Findings
+            <FileText size={20} /> 5. Write Your Findings
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
             The <strong className="text-text uppercase">Context</strong> tab is where your actual writing lives. Create sections — these are the chapters of your investigation. You can link nodes to your sections so you can always trace a claim back to the evidence on your map.
@@ -145,7 +141,7 @@ In other words, ODEN uses AI as a **methodology assistant**, not a decision make
 
         <section>
           <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <CheckCircle size={20} /> 8. Test Your Own Work
+            <CheckCircle size={20} /> 6. Methodology Check
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
             The <strong className="text-text uppercase">Methodology Check</strong> tab asks hard questions about your own research. Are you finding real gaps or just missing things? This is what separates research from belief.

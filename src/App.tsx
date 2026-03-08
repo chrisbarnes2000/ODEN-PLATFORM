@@ -16,14 +16,15 @@ import {
   ArrowRight,
   Trash2,
   ExternalLink,
-  Link as LinkIcon,
+  Globe,
   AlertTriangle,
   FileUp,
   Loader2,
   Eye,
   EyeOff,
   Sparkles,
-  Edit2
+  Edit2,
+  BrainCircuit
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Stage, Layer, Circle, Line, Text, Group, Rect } from 'react-konva';
@@ -47,6 +48,7 @@ import BlueprintTab from './components/BlueprintTab';
 import ContextTab from './components/ContextTab';
 import DocsTab from './components/DocsTab';
 import NodesTab from './components/NodesTab';
+import AIInsightsTab from './components/AIInsightsTab';
 import MethodologyCheckTab from './components/MethodologyCheckTab';
 import QuickStartTab from './components/QuickStartTab';
 import ProposalTray from './components/ProposalTray';
@@ -189,6 +191,19 @@ export default function App() {
         updatedNodes = updatedNodes.map(n => 
           n.id === nodeId ? { ...n, label: label || n.label, description: description || n.description, type: type || n.type } : n
         );
+      } else if (proposal.type === 'create_context') {
+        const newSection: ContextSection = {
+          id: `ctx-${Date.now()}`,
+          heading: proposal.data.heading,
+          category: proposal.data.category || 'AI Analysis',
+          body: proposal.data.body,
+          linkedNodeIds: []
+        };
+        return {
+          ...prev,
+          sections: [...prev.sections, newSection],
+          proposals: prev.proposals.map(p => p.id === proposal.id ? { ...p, status: 'approved' } : p)
+        };
       }
 
       return {
@@ -247,7 +262,8 @@ export default function App() {
           project.nodes,
           fullContext,
           project.documents,
-          project.sources
+          project.sources,
+          project.blueprint
         );
       } else {
         result = await extractEntitiesFromText(
@@ -255,7 +271,8 @@ export default function App() {
           project.nodes,
           fullContext,
           project.documents,
-          project.sources
+          project.sources,
+          project.blueprint
         );
       }
       setImportResult(result);
@@ -265,6 +282,30 @@ export default function App() {
     } finally {
       setIsImporting(false);
     }
+  };
+
+  const handleSimpleUpload = () => {
+    if (!importText.trim() && !importFile) return;
+    
+    const newDoc: DocumentData = {
+      id: `doc-${Date.now()}`,
+      title: importFile?.name || 'Imported Document',
+      category: 'Evidence',
+      status: 'received',
+      description: importText || 'Uploaded via simple import.',
+      date: new Date().toISOString().split('T')[0],
+      url: '',
+      nodeIds: []
+    };
+    
+    setProject(prev => ({
+      ...prev,
+      documents: [...prev.documents, newDoc]
+    }));
+    
+    setImportText('');
+    setImportFile(null);
+    setActiveTab('docs');
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -463,11 +504,12 @@ export default function App() {
           { id: 'map', label: '◈ Map', icon: MapIcon },
           { id: 'context', label: '≡ Context', icon: FileText },
           { id: 'docs', label: '☰ Documents', icon: Database },
-          { id: 'sources', label: '🔗 Sources', icon: LinkIcon },
+          { id: 'sources', label: 'Sources', icon: Globe },
           { id: 'blueprint', label: '☷ Blueprint', icon: Layers },
           { id: 'nodes', label: '⊞ Nodes & Edges', icon: Plus },
-          { id: 'proposals', label: '✧ Proposals', icon: Sparkles },
           { id: 'check', label: '✓ Methodology', icon: CheckCircle },
+          { id: 'proposals', label: '✧ Proposals', icon: Sparkles },
+          { id: 'ai-insights', label: '✧ AI Insights', icon: BrainCircuit },
           { id: 'import', label: '⇑ Smart Import', icon: FileUp },
           { id: 'save', label: '⇓ Save', icon: Save },
         ].map(tab => (
@@ -579,12 +621,13 @@ export default function App() {
                     </button>
                   </div>
 
-                  <div className="bg-panel border border-border p-3 rounded mb-8 flex items-start gap-3">
-                    <Info size={16} className="text-accent shrink-0 mt-0.5" />
-                    <p className="text-[11px] text-muted leading-relaxed">
-                      <strong>AI Authorization Disclaimer:</strong> ODEN AI does not make any changes to your investigation without explicit authorization. 
-                      All suggestions are based strictly on the context you have provided or downloaded. No external data is used.
-                    </p>
+                  <div className="mb-6 p-4 bg-accent/5 border border-accent/10 rounded-lg flex items-start gap-3">
+                    <Info size={18} className="text-accent shrink-0 mt-0.5" />
+                    <div className="text-[12px] text-muted leading-relaxed">
+                      <span className="font-bold text-accent uppercase tracking-wider block mb-1">AI Disclaimer</span>
+                      ODEN AI does not make any changes to your investigation without explicit authorization. 
+                      <span className="text-text font-medium"> All suggestions are based strictly on the context you have provided or uploaded. No external data is used.</span>
+                    </div>
                   </div>
 
               <ProposalTray 
@@ -592,6 +635,21 @@ export default function App() {
                 onApprove={handleApproveProposal}
                 onDismiss={handleDismissProposal}
                 onEdit={(p) => setEditingProposal(p)}
+              />
+            </motion.div>
+          )}
+
+          {activeTab === 'ai-insights' && (
+            <motion.div 
+              key="ai-insights"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex-1 overflow-hidden"
+            >
+              <AIInsightsTab 
+                project={project} 
+                onUpdateBriefing={(briefing) => setProject(prev => ({ ...prev, briefing }))}
               />
             </motion.div>
           )}
@@ -799,6 +857,15 @@ export default function App() {
                 </div>
               </div>
 
+              <div className="mb-6 p-4 bg-accent/5 border border-accent/10 rounded-lg flex items-start gap-3">
+                <Info size={18} className="text-accent shrink-0 mt-0.5" />
+                <div className="text-[12px] text-muted leading-relaxed">
+                  <span className="font-bold text-accent uppercase tracking-wider block mb-1">AI Disclaimer</span>
+                  This tool analyzes your uploaded text and documents to suggest nodes and connections. 
+                  <span className="text-text font-medium"> It does not search outside your provided research, and it will not add anything to your map without your explicit approval via the Proposals tab.</span>
+                </div>
+              </div>
+
               {!importResult ? (
                 <div className="space-y-6">
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -866,23 +933,38 @@ export default function App() {
                     </div>
                   </div>
 
-                  <button 
-                    className="btn w-full flex items-center justify-center gap-2 py-4"
-                    onClick={handleSmartImport}
-                    disabled={isImporting || (!importText.trim() && !importFile)}
-                  >
-                    {isImporting ? (
-                      <>
-                        <Loader2 className="animate-spin" size={16} />
-                        ANALYZING {importFile ? 'DOCUMENT' : 'TEXT'}...
-                      </>
-                    ) : (
-                      <>
-                        <FileUp size={16} />
-                        EXTRACT NODES & CONTEXT
-                      </>
-                    )}
-                  </button>
+                  <div className="flex flex-col gap-3">
+                    <button 
+                      className="btn w-full flex items-center justify-center gap-2 py-4"
+                      onClick={handleSmartImport}
+                      disabled={isImporting || (!importText.trim() && !importFile)}
+                    >
+                      {isImporting ? (
+                        <>
+                          <Loader2 className="animate-spin" size={16} />
+                          ANALYZING {importFile ? 'DOCUMENT' : 'TEXT'}...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles size={16} />
+                          SMART EXTRACT (AI)
+                        </>
+                      )}
+                    </button>
+                    
+                    <button 
+                      className="w-full flex items-center justify-center gap-2 py-3 border border-border rounded-lg text-muted hover:text-text hover:bg-surface transition-all text-[12px] font-bold uppercase"
+                      onClick={handleSimpleUpload}
+                      disabled={isImporting || (!importText.trim() && !importFile)}
+                    >
+                      <FileUp size={16} />
+                      SIMPLE UPLOAD (NO AI)
+                    </button>
+                    
+                    <div className="text-[10px] text-center text-muted italic">
+                      AI extraction is optional. Simple upload just adds the content to your Documents tab.
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <div className="space-y-6">

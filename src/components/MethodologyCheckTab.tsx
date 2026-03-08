@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { CheckCircle, AlertTriangle, Info, Sparkles, Loader2, BrainCircuit } from 'lucide-react';
 import { ProjectData } from '../types';
-import { generateInvestigationInsight } from '../services/geminiService';
+import { generateCaseNarrative } from '../services/geminiService';
 
 interface MethodologyCheckTabProps {
   project: ProjectData;
@@ -78,10 +78,7 @@ export default function MethodologyCheckTab({ project }: MethodologyCheckTabProp
   const handleGenerateInsight = async () => {
     setIsGeneratingInsight(true);
     try {
-      const insight = await generateInvestigationInsight(project);
-      // We don't have a setProject here, but we can just show it locally or update parent if needed.
-      // For now, let's assume we want to store it in the project state if possible.
-      // Since we don't have setProject, we'll just use a local state for the display.
+      const insight = await generateCaseNarrative(project);
       setLocalInsight(insight);
     } catch (error) {
       console.error(error);
@@ -94,27 +91,11 @@ export default function MethodologyCheckTab({ project }: MethodologyCheckTabProp
 
   return (
     <div className="h-full w-full flex flex-col overflow-hidden">
-      {/* View Switcher */}
-      <div className="flex-shrink-0 bg-panel border-b border-border flex">
-        <button 
-          onClick={() => setActiveView('method')}
-          className={`flex-1 py-3 text-[10px] uppercase tracking-[2px] font-bold transition-all ${activeView === 'method' ? 'text-accent border-b-2 border-accent bg-white/5' : 'text-muted hover:text-text'}`}
-        >
-          Methodology Check
-        </button>
-        <button 
-          onClick={() => setActiveView('ai')}
-          className={`flex-1 py-3 text-[10px] uppercase tracking-[2px] font-bold transition-all ${activeView === 'ai' ? 'text-accent border-b-2 border-accent bg-white/5' : 'text-muted hover:text-text'}`}
-        >
-          AI Investigation Insight
-        </button>
-      </div>
+      {/* View Switcher removed - single view now */}
 
       <div className="flex-1 overflow-y-auto">
         <div className="max-w-4xl mx-auto p-8 w-full">
-          {activeView === 'method' ? (
-            <>
-              <div className="mbox mb-8">
+          <div className="mbox mb-8">
                 <div className="flex items-center justify-between mb-4">
                   <h3>Methodology Parameters</h3>
                   <div className="flex items-center gap-1.5 bg-surface border border-border px-2 py-1 rounded">
@@ -206,69 +187,6 @@ export default function MethodologyCheckTab({ project }: MethodologyCheckTabProp
                   </div>
                 </>
               )}
-            </>
-          ) : (
-            <div className="space-y-8">
-              <div className="mbox">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="flex items-center gap-3">
-                    <BrainCircuit className="text-accent" size={24} />
-                    <h3>AI Investigation Insight</h3>
-                  </div>
-                  <div className="flex items-center gap-1.5 bg-accent/10 border border-accent/20 px-2 py-1 rounded">
-                    <Sparkles size={10} className="text-accent" />
-                    <span className="text-[9px] font-bold text-accent uppercase tracking-wider">Gemini 3.1 Pro</span>
-                  </div>
-                </div>
-                <p className="mb-6">This feature uses Gemini to analyze your nodes, connections, and blueprint data to suggest leads, identify potential contradictions, and recommend next steps.</p>
-                
-                {!localInsight && !isGeneratingInsight && (
-                  <div className="flex flex-col items-center justify-center py-12 border border-dashed border-border bg-surface/30">
-                    <button 
-                      className="btn btn-lg px-12 flex items-center gap-2"
-                      onClick={handleGenerateInsight}
-                    >
-                      <Sparkles size={18} />
-                      GENERATE INSIGHT
-                    </button>
-                  </div>
-                )}
-
-                {isGeneratingInsight && (
-                  <div className="flex flex-col items-center justify-center py-20">
-                    <Loader2 className="animate-spin text-accent mb-4" size={48} />
-                    <div className="text-accent font-bold uppercase tracking-widest text-[12px]">Analyzing Case Data...</div>
-                    <div className="text-muted text-[10px] mt-2 italic">Scanning for gaps and contradictions</div>
-                  </div>
-                )}
-
-                {localInsight && !isGeneratingInsight && (
-                  <div className="space-y-6">
-                    <div className="bg-bg border border-border p-6 font-serif text-[15px] leading-relaxed text-text markdown-body">
-                      {localInsight}
-                    </div>
-                    <button 
-                      className="btn btn-sm flex items-center gap-2"
-                      onClick={handleGenerateInsight}
-                    >
-                      <Sparkles size={14} />
-                      RE-ANALYZE
-                    </button>
-                  </div>
-                )}
-              </div>
-
-              <div className="p-6 bg-accent/5 border border-accent/20 rounded">
-                <div className="flex items-center gap-2 mb-2">
-                  <Info size={14} className="text-accent" />
-                  <div className="text-[11px] font-bold text-accent uppercase tracking-wider">How to use this</div>
-                </div>
-                <div className="text-[12px] text-muted leading-relaxed">
-                  The AI insight is most effective when you have at least 5-10 nodes and several connections. It looks for "structural" patterns — like an actor with no sources, or a gap that isn't linked to a controller. Use these suggestions as leads to follow, not as final conclusions.
-                </div>
-              </div>
-            </div>
-          )}
         </div>
       </div>
     </div>

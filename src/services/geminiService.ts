@@ -72,7 +72,8 @@ export async function extractEntitiesFromText(
   existingNodes: any[] = [],
   projectContext: string = "",
   existingDocs: any[] = [],
-  existingSources: any[] = []
+  existingSources: any[] = [],
+  blueprint: Record<string, string> = {}
 ): Promise<SmartImportResult> {
   const model = "gemini-3-flash-preview";
   
@@ -81,6 +82,7 @@ export async function extractEntitiesFromText(
     Existing Context Summary: ${projectContext.substring(0, 1000)}...
     Existing Documents: ${existingDocs.map(d => d.title).join(', ')}
     Existing Sources: ${existingSources.map(s => s.title).join(', ')}
+    Blueprint Categories: ${Object.entries(blueprint).map(([id, label]) => `${id}: ${label}`).join(', ')}
   `;
 
   const prompt = `Extract entities and relationships from this text for an investigation using the ODEN methodology. 
@@ -92,11 +94,13 @@ export async function extractEntitiesFromText(
   - GOLD 'actor' nodes: People or individuals.
   
   IMPORTANT: 
-  1. Compare the new information with the existing investigation context.
+  1. HOLISTIC ANALYSIS: Compare the new information with the ENTIRE existing investigation context (nodes, documents, sources, and narrative).
   2. If an entity already exists, use its EXACT label.
-  3. Provide a 'reasoning' field for each node, explaining why it was flagged (especially for RED events or BLUE gaps).
-  4. Assign a 'confidence' score (high, medium, low).
-  5. Extract all URLs, website links, and email metadata (sender, recipient, subject, date, url if available).
+  3. Use the 'Blueprint Categories' provided below to determine the 'type' of each node. If a category matches the entity's role, use that category ID as the type. 
+  4. FLEXIBILITY: If an entity clearly belongs to a type not listed in the blueprint (e.g., location, media, financial, object), you may suggest a standard investigative type that best fits. Prioritize the blueprint, but do not be limited by it.
+  5. Provide a 'reasoning' field for each node, explaining why it was flagged (especially for RED events or BLUE gaps).
+  6. Assign a 'confidence' score (high, medium, low).
+  7. Extract all URLs, website links, and email metadata (sender, recipient, subject, date, url if available).
   
   Existing Investigation Context:
   ${contextSummary}
@@ -121,7 +125,8 @@ export async function extractEntitiesFromDocument(
   existingNodes: any[] = [],
   projectContext: string = "",
   existingDocs: any[] = [],
-  existingSources: any[] = []
+  existingSources: any[] = [],
+  blueprint: Record<string, string> = {}
 ): Promise<SmartImportResult> {
   const model = "gemini-3-flash-preview";
   
@@ -130,6 +135,7 @@ export async function extractEntitiesFromDocument(
     Existing Context Summary: ${projectContext.substring(0, 1000)}...
     Existing Documents: ${existingDocs.map(d => d.title).join(', ')}
     Existing Sources: ${existingSources.map(s => s.title).join(', ')}
+    Blueprint Categories: ${Object.entries(blueprint).map(([id, label]) => `${id}: ${label}`).join(', ')}
   `;
 
   const prompt = `Extract entities and relationships from this document for an investigation using the ODEN methodology. 
@@ -141,11 +147,13 @@ export async function extractEntitiesFromDocument(
   - GOLD 'actor' nodes: People or individuals.
   
   IMPORTANT: 
-  1. Compare the new information with the existing investigation context.
+  1. HOLISTIC ANALYSIS: Compare the new information with the ENTIRE existing investigation context (nodes, documents, sources, and narrative).
   2. If an entity already exists, use its EXACT label.
-  3. Provide a 'reasoning' field for each node, explaining why it was flagged (especially for RED events or BLUE gaps).
-  4. Assign a 'confidence' score (high, medium, low).
-  5. Extract all URLs, website links, and email metadata (sender, recipient, subject, date, url if available).
+  3. Use the 'Blueprint Categories' provided below to determine the 'type' of each node. If a category matches the entity's role, use that category ID as the type.
+  4. FLEXIBILITY: If an entity clearly belongs to a type not listed in the blueprint (e.g., location, media, financial, object), you may suggest a standard investigative type that best fits. Prioritize the blueprint, but do not be limited by it.
+  5. Provide a 'reasoning' field for each node, explaining why it was flagged (especially for RED events or BLUE gaps).
+  6. Assign a 'confidence' score (high, medium, low).
+  7. Extract all URLs, website links, and email metadata (sender, recipient, subject, date, url if available).
   
   Existing Investigation Context:
   ${contextSummary}`;
@@ -167,33 +175,50 @@ export async function extractEntitiesFromDocument(
   return JSON.parse(response.text);
 }
 
-export async function generateInvestigationInsight(project: ProjectData): Promise<string> {
+export async function generateCaseNarrative(project: ProjectData): Promise<string> {
   const model = "gemini-3-flash-preview";
   
   const prompt = `
-    You are an expert investigative analyst. Analyze the following investigative project data and provide a concise, high-level insight.
+    You are an expert investigative analyst. Provide a narrative "Case Briefing" based on the current investigation data.
     
     Project Name: ${project.caseName}
     
-    Nodes (Entities):
-    ${project.nodes.map(n => `- ${n.label} (${n.type})${n.placeholder ? ' [UNVERIFIED]' : ''}: ${n.description}`).join('\n')}
+    Investigation Blueprint (User-defined categories):
+    ${Object.entries(project.blueprint).map(([id, label]) => `- ${id}: ${label}`).join('\n')}
+
+    Investigation Summary:
+    - Total Entities: ${project.nodes.length}
+    - Total Connections: ${project.edges.length}
+    - Documents Uploaded: ${project.documents.length}
+    - Sources Cited: ${project.sources.length}
+    - Gaps Identified: ${project.nodes.filter(n => n.type === 'gap').length}
+    - Unverified Leads: ${project.nodes.filter(n => n.placeholder).length}
+    
+    Context Sections:
+    ${project.sections.map(s => `- ${s.heading} (${s.category})`).join('\n')}
+
+    Documents & Sources:
+    ${project.documents.map(d => `- Document: ${d.title} (${d.category})`).join('\n')}
+    ${project.sources.map(s => `- Source: ${s.title} (${s.institution})`).join('\n')}
+
+    Entities & Descriptions:
+    ${project.nodes.map(n => `- ${n.label} (${n.type}): ${n.description}`).join('\n')}
     
     Connections:
     ${project.edges.map(e => {
       const from = project.nodes.find(n => n.id === e.from)?.label;
       const to = project.nodes.find(n => n.id === e.to)?.label;
-      return `- ${from} -> ${to} (${e.type}: ${e.label})`;
+      return `- ${from} -> ${to} (${e.label})`;
     }).join('\n')}
     
-    Blueprint Progress:
-    ${Object.entries(project.blueprint).map(([k, v]) => `- ${k}: ${v ? 'Documented' : 'Missing'}`).join('\n')}
-    
     TASK:
-    1. Identify the strongest lead or most critical entity.
-    2. Highlight a potential "Gap" or "Contradiction" in the current network.
-    3. Suggest a specific next step for the investigator (e.g., "Find a source for Entity X" or "Verify the connection between Y and Z").
+    Write a narrative briefing that "talks" to the investigator. 
+    1. Summarize the current state of the investigation.
+    2. Identify the "Critical Path" (the most important sequence of connections).
+    3. Highlight "Structural Silence" (where the map is missing data or institutions are unresponsive).
+    4. Suggest the most impactful next move.
     
-    Keep the response professional, investigative, and under 200 words. Use Markdown.
+    Tone: Professional, cinematic, and analytical. Use Markdown. Keep it under 400 words.
   `;
 
   try {
@@ -201,10 +226,10 @@ export async function generateInvestigationInsight(project: ProjectData): Promis
       model,
       contents: [{ parts: [{ text: prompt }] }],
     });
-    return response.text || "Unable to generate insight at this time.";
+    return response.text || "No narrative available.";
   } catch (error) {
     console.error("Gemini Error:", error);
-    return "Error generating insight. Please check your connection.";
+    return "Error generating briefing.";
   }
 }
 
@@ -220,7 +245,7 @@ const PROPOSAL_SCHEMA = {
       items: {
         type: Type.OBJECT,
         properties: {
-          type: { type: Type.STRING, enum: ['create_node', 'create_edge', 'merge_nodes', 'attach_evidence', 'promote_placeholder', 'update_node'] },
+          type: { type: Type.STRING, enum: ['create_node', 'create_edge', 'merge_nodes', 'attach_evidence', 'promote_placeholder', 'update_node', 'create_context'] },
           data: { type: Type.OBJECT },
           justification: { type: Type.STRING },
           reasoning: { type: Type.STRING, description: "Detailed methodology reasoning for this proposal." },
@@ -237,43 +262,59 @@ const PROPOSAL_SCHEMA = {
 export async function generateProposals(project: ProjectData, contextText?: string): Promise<any[]> {
   const model = "gemini-3-flash-preview";
   
-  const prompt = `
+    const prompt = `
     You are an expert investigative analyst using the ODEN methodology. 
     Analyze the current project data and the provided context (if any) to suggest structural improvements.
     
-    Current Nodes: 
+    Current Nodes (Entities already in the investigation): 
     ${project.nodes.map(n => `- [${n.id}] ${n.label} (${n.type}): ${n.description}`).join('\n')}
     
-    Current Edges: ${project.edges.length} connections.
+    Current Edges (Connections): ${project.edges.length} connections mapped.
     
-    New Context: ${contextText || 'None provided'}
+    Existing Documents: ${project.documents.map(d => d.title).join(', ')}
+    Existing Sources: ${project.sources.map(s => s.title).join(', ')}
+    
+    Investigation Blueprint (User-defined categories):
+    ${Object.entries(project.blueprint || {}).map(([id, label]) => `- ${id}: ${label}`).join('\n')}
+    
+    New Context to Analyze: ${contextText || 'None provided'}
     
     ODEN Methodology Rules:
     - RED nodes ('case', 'event', 'suspect'): Core claims or high-stakes entities.
     - BLUE nodes ('gap'): Documented absences of expected records.
     - GREEN nodes ('institution'): Controllers of records.
+    - GOLD nodes ('actor'): Individuals.
     - DASHED/PLACEHOLDER: Unverified leads.
     
-    CRITICAL: 
-    1. Look for redundant nodes that should be merged (e.g., "John Doe" and "J. Doe").
-    2. Suggest RED 'event' nodes for critical occurrences found in context.
-    3. Suggest BLUE 'gap' nodes where records are missing or expected but not found.
-    4. Suggest updates to existing nodes if new context provides more detail.
-    5. Assign a 'confidence' score (high, medium, low) to each proposal.
+    CRITICAL TASKS:
+    1. HOLISTIC ANALYSIS: Analyze the new context in relation to ALL existing data (nodes, edges, documents, and sources).
+    2. CROSSOVER & CONVERGENCE: Look for "Crossovers" — nodes that appear in multiple independent threads or contexts. If a node links two disparate parts of the investigation, flag it as a critical crossover.
+    3. PATTERN RECOGNITION: Look for redundant nodes that should be merged (e.g., "John Doe" and "J. Doe" or "The Bank" and "Bank of America").
+    4. BLUEPRINT ALIGNMENT: Use the 'Blueprint Categories' provided above to determine the 'type' of each node. If a category matches the entity's role, use that category ID as the type.
+    5. FLEXIBILITY: If an entity clearly belongs to a type not listed in the blueprint (e.g., location, media, financial, object), you may suggest a standard investigative type that best fits. Prioritize the blueprint, but do not be limited by it.
+    6. GAP DETECTION: Suggest BLUE 'gap' nodes where records are missing or expected but not found based on the context.
+    4. EVENT IDENTIFICATION: Suggest RED 'event' nodes for critical occurrences found in the new context.
+    5. CONTEXTUAL ADDITIONS: Suggest new 'Context' sections (narrative summaries) if the new context provides a coherent story or background that isn't yet recorded.
+    6. DATA ENRICHMENT: Suggest updates to existing nodes if the new context provides more detail than what is currently recorded.
+    7. RELATIONSHIP MAPPING: Suggest new connections between existing or new nodes.
     
-    PROPOSAL TYPES:
-    1. 'create_node': Suggest new entities found in context. Data: { label, type, description, placeholder }.
-    2. 'create_edge': Suggest connections. Data: { fromLabel, toLabel, label, type }.
-    3. 'merge_nodes': If two nodes represent the same entity. Data: { nodeAId, nodeBId, mergedLabel, mergedDescription }.
-    4. 'update_node': If an existing node needs more detail. Data: { nodeId, label, description, type }.
-    5. 'attach_evidence': Link a document to a node. Data: { nodeLabel, docTitle }.
-    6. 'promote_placeholder': If context verifies a placeholder. Data: { nodeId }.
+    PROPOSAL TYPES & DATA STRUCTURES:
+    1. 'create_node': Data: { label, type, description, placeholder, reasoning }.
+    2. 'create_edge': Data: { fromLabel, toLabel, label, type, reasoning }.
+    3. 'merge_nodes': Data: { nodeAId, nodeBId, mergedLabel, mergedDescription, reasoning }.
+    4. 'update_node': Data: { nodeId, label, description, type, reasoning }.
+    5. 'attach_evidence': Data: { nodeLabel, docTitle, reasoning }.
+    6. 'promote_placeholder': Data: { nodeId, reasoning }.
+    7. 'create_context': Data: { heading, category, body, reasoning }.
     
-    For each proposal, provide a 'justification' explaining WHY based on the methodology.
-    If context is provided, include a 'sourceSnippet' from the text.
+    For each proposal:
+    - Provide a 'justification' (short summary for the user).
+    - Provide a 'reasoning' (detailed methodology explanation).
+    - Include a 'sourceSnippet' if the suggestion comes from the new context.
+    - Assign a 'confidence' score (high, medium, low).
     
-    DISCLAIMER: AI suggestions are for guidance only and require human authorization.
-  `;
+    IMPORTANT: Be specific. Don't just say "Add node". Say "Add node: [Entity Name]".
+    `;
 
   const response = await ai.models.generateContent({
     model,

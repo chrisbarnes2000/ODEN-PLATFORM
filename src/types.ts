@@ -78,7 +78,7 @@ export interface SourceData {
 
 export interface Proposal {
   id: string;
-  type: 'create_node' | 'create_edge' | 'merge_nodes' | 'attach_evidence' | 'promote_placeholder' | 'update_node';
+  type: 'create_node' | 'create_edge' | 'merge_nodes' | 'attach_evidence' | 'promote_placeholder' | 'update_node' | 'create_context';
   data: any; // Specific to the proposal type
   justification: string;
   reasoning?: string; // Detailed methodology reasoning
@@ -99,4 +99,5 @@ export interface ProjectData {
   completedPhases: string[];
   aiInsight?: string;
   proposals: Proposal[];
+  briefing?: string;
 }

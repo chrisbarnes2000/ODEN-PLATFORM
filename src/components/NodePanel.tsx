@@ -111,19 +111,31 @@ export default function NodePanel({
 
         {linkedDocs.length > 0 && (
           <div>
-            <div className="text-[10px] uppercase tracking-widest text-muted mb-3 font-bold flex items-center gap-1.5">
-              <FileText size={10} /> Supporting Documents
+            <div className="text-[10px] uppercase tracking-widest text-accent mb-3 font-bold flex items-center gap-1.5">
+              <FileText size={10} /> Evidence & Traceability
             </div>
-            <div className="space-y-2">
+            <div className="space-y-3">
               {linkedDocs.map(doc => (
-                <button 
-                  key={doc.id}
-                  onClick={() => onEditDoc(doc.id)}
-                  className="w-full text-left p-2 bg-surface border border-border rounded hover:border-accent transition-all flex items-center justify-between group"
-                >
-                  <span className="text-[12px] truncate">{doc.title}</span>
-                  <ExternalLink size={12} className="text-muted group-hover:text-accent" />
-                </button>
+                <div key={doc.id} className="bg-surface border border-border rounded overflow-hidden">
+                  <button 
+                    onClick={() => onEditDoc(doc.id)}
+                    className="w-full text-left p-3 border-b border-border flex items-center justify-between group hover:bg-accent/5 transition-all"
+                  >
+                    <div className="flex flex-col">
+                      <span className="text-[11px] font-bold text-accent uppercase tracking-wider">{doc.category}</span>
+                      <span className="text-[13px] font-serif">{doc.title}</span>
+                    </div>
+                    <ExternalLink size={14} className="text-muted group-hover:text-accent" />
+                  </button>
+                  {doc.description && doc.description.length > 10 && (
+                    <div className="p-3 bg-bg/30">
+                      <div className="text-[9px] uppercase font-bold text-muted mb-1">Extracted Snippet</div>
+                      <div className="text-[11px] text-text italic leading-relaxed font-serif">
+                        "{doc.description.length > 200 ? doc.description.substring(0, 200) + '...' : doc.description}"
+                      </div>
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
           </div>

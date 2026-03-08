@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { 
-  Link as LinkIcon, 
+  Globe, 
   Trash2, 
   Plus, 
   ExternalLink, 
@@ -9,7 +9,6 @@ import {
   Edit2, 
   X, 
   Mail, 
-  Globe, 
   FileText, 
   Search,
   ChevronRight,
@@ -324,7 +323,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
 
           {filteredSources.length === 0 ? (
             <div className="p-12 text-center border border-dashed border-border bg-surface/30 rounded-xl">
-              <LinkIcon size={48} className="mx-auto text-muted mb-4 opacity-20" />
+              <Globe size={48} className="mx-auto text-muted mb-4 opacity-20" />
               <p className="text-muted text-[14px]">No sources found matching your search.</p>
             </div>
           ) : (

@@ -93,15 +93,56 @@ export default function GraphView({
 
   useEffect(() => {
     const handleResize = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
       setDimensions({ 
-        width: window.innerWidth, 
-        height: window.innerWidth < 768 ? window.innerHeight - 160 : window.innerHeight - 100 
+        width: width, 
+        height: width < 768 ? height - 120 : height - 80 
       });
     };
     window.addEventListener('resize', handleResize);
     handleResize();
     return () => window.removeEventListener('resize', handleResize);
   }, []);
+
+  const fitToScreen = () => {
+    if (!stageRef.current || graphNodes.length === 0) return;
+    
+    const stage = stageRef.current;
+    const padding = 50;
+    
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    graphNodes.forEach(node => {
+      minX = Math.min(minX, node.x);
+      minY = Math.min(minY, node.y);
+      maxX = Math.max(maxX, node.x);
+      maxY = Math.max(maxY, node.y);
+    });
+
+    const graphWidth = maxX - minX + padding * 2;
+    const graphHeight = maxY - minY + padding * 2;
+    
+    const scale = Math.min(
+      dimensions.width / graphWidth,
+      dimensions.height / graphHeight,
+      1
+    );
+
+    stage.scale({ x: scale, y: scale });
+    stage.position({
+      x: (dimensions.width - (maxX + minX) * scale) / 2,
+      y: (dimensions.height - (maxY + minY) * scale) / 2
+    });
+    setZoom(scale);
+    stage.batchDraw();
+  };
+
+  useEffect(() => {
+    if (graphNodes.length > 0) {
+      const timer = setTimeout(fitToScreen, 500);
+      return () => clearTimeout(timer);
+    }
+  }, [simulationTrigger, graphNodes.length === 0]);
 
   useEffect(() => {
     const isValid = (val: any) => typeof val === 'number' && !isNaN(val);
@@ -398,6 +439,31 @@ export default function GraphView({
             <Sparkles size={14} />
             RESET LAYOUT
           </button>
+          
+          <div className="flex flex-col gap-1">
+            <button 
+              onClick={fitToScreen}
+              className="bg-panel/90 border border-border p-2 text-muted hover:text-accent transition-colors shadow-lg flex items-center gap-2 text-[10px] uppercase tracking-widest font-bold"
+              title="Fit to Screen"
+            >
+              <Maximize2 size={14} />
+              FIT TO SCREEN
+            </button>
+            <div className="flex gap-1">
+              <button 
+                onClick={() => setZoom(z => Math.min(z + 0.1, 2))}
+                className="flex-1 bg-panel/90 border border-border p-2 text-muted hover:text-accent transition-colors shadow-lg text-[10px] font-bold"
+              >
+                +
+              </button>
+              <button 
+                onClick={() => setZoom(z => Math.max(z - 0.1, 0.1))}
+                className="flex-1 bg-panel/90 border border-border p-2 text-muted hover:text-accent transition-colors shadow-lg text-[10px] font-bold"
+              >
+                -
+              </button>
+            </div>
+          </div>
         </div>
       </div>
 

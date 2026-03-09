@@ -1081,6 +1081,21 @@ export default function App() {
                           <Plus size={10} /> Add Node
                         </button>
                       </div>
+
+                      {/* Node Type Legend */}
+                      <div className="bg-surface/50 border border-border/50 p-3 rounded-lg">
+                        <div className="text-[8px] uppercase font-bold text-muted mb-2 tracking-widest">Node Type Legend</div>
+                        <div className="flex flex-wrap gap-x-3 gap-y-1.5">
+                          {Object.entries(COLORS).slice(0, 10).map(([type, color]) => (
+                            <div key={type} className="flex items-center gap-1.5">
+                              <div className="w-2 h-2 rounded-full" style={{ backgroundColor: color }} />
+                              <span className="text-[9px] uppercase font-bold text-muted/80">{type}</span>
+                            </div>
+                          ))}
+                          <div className="text-[9px] text-accent italic">...and more</div>
+                        </div>
+                      </div>
+
                       <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
                         {importResult.nodes.map((n, i) => (
                           <div key={i} className={cn(
@@ -1119,17 +1134,23 @@ export default function App() {
                                   setImportResult({ ...importResult, nodes: newNodes });
                                 }}
                               />
-                              <select 
-                                className="bg-bg border border-border rounded px-2 py-1 text-[11px] outline-none focus:border-accent"
-                                value={n.type}
-                                onChange={e => {
-                                  const newNodes = [...importResult.nodes];
-                                  newNodes[i].type = e.target.value;
-                                  setImportResult({ ...importResult, nodes: newNodes });
-                                }}
-                              >
-                                {Object.keys(COLORS).map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
-                              </select>
+                              <div className="relative flex items-center">
+                                <div 
+                                  className="absolute left-2 w-2 h-2 rounded-full pointer-events-none" 
+                                  style={{ backgroundColor: COLORS[n.type as NodeType] || '#888' }} 
+                                />
+                                <select 
+                                  className="w-full bg-bg border border-border rounded pl-6 pr-2 py-1 text-[11px] outline-none focus:border-accent appearance-none"
+                                  value={n.type}
+                                  onChange={e => {
+                                    const newNodes = [...importResult.nodes];
+                                    newNodes[i].type = e.target.value;
+                                    setImportResult({ ...importResult, nodes: newNodes });
+                                  }}
+                                >
+                                  {Object.keys(COLORS).map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                                </select>
+                              </div>
                             </div>
                             <textarea 
                               className="w-full bg-bg border border-border rounded px-2 py-1 text-[10px] min-h-[40px] outline-none focus:border-accent"
@@ -1316,13 +1337,31 @@ export default function App() {
             <div className="p-6 space-y-4">
               {editingProposal.type === 'create_node' && (
                 <>
-                  <div>
-                    <label className="block text-[10px] uppercase text-muted font-bold mb-1">Label</label>
-                    <input 
-                      className="w-full bg-bg border border-border rounded px-3 py-2 text-[13px] outline-none focus:border-accent"
-                      value={editingProposal.data.label}
-                      onChange={e => setEditingProposal({ ...editingProposal, data: { ...editingProposal.data, label: e.target.value } })}
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10px] uppercase text-muted font-bold mb-1">Label</label>
+                      <input 
+                        className="w-full bg-bg border border-border rounded px-3 py-2 text-[13px] outline-none focus:border-accent"
+                        value={editingProposal.data.label}
+                        onChange={e => setEditingProposal({ ...editingProposal, data: { ...editingProposal.data, label: e.target.value } })}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] uppercase text-muted font-bold mb-1">Node Type</label>
+                      <div className="relative flex items-center">
+                        <div 
+                          className="absolute left-2 w-2 h-2 rounded-full pointer-events-none" 
+                          style={{ backgroundColor: COLORS[editingProposal.data.type as NodeType] || '#888' }} 
+                        />
+                        <select 
+                          className="w-full bg-bg border border-border rounded pl-6 pr-2 py-2 text-[13px] outline-none focus:border-accent appearance-none"
+                          value={editingProposal.data.type}
+                          onChange={e => setEditingProposal({ ...editingProposal, data: { ...editingProposal.data, type: e.target.value } })}
+                        >
+                          {Object.keys(COLORS).map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
+                        </select>
+                      </div>
+                    </div>
                   </div>
                   <div>
                     <label className="block text-[10px] uppercase text-muted font-bold mb-1">Description</label>

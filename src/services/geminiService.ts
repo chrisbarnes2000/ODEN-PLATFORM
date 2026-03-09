@@ -245,8 +245,30 @@ const PROPOSAL_SCHEMA = {
       items: {
         type: Type.OBJECT,
         properties: {
-          type: { type: Type.STRING, enum: ['create_node', 'create_edge', 'merge_nodes', 'attach_evidence', 'promote_placeholder', 'update_node', 'create_context'] },
-          data: { type: Type.OBJECT },
+          type: { 
+            type: Type.STRING, 
+            enum: ['create_node', 'create_edge', 'merge_nodes', 'attach_evidence', 'promote_placeholder', 'update_node', 'create_context'] 
+          },
+          data: { 
+            type: Type.OBJECT,
+            description: "The structured data for the proposal. For 'create_node', must include 'label', 'type' (node type), and 'description'. For 'create_edge', must include 'fromLabel', 'toLabel', 'label' (relationship), and 'type' (edge type).",
+            properties: {
+              label: { type: Type.STRING },
+              type: { type: Type.STRING },
+              description: { type: Type.STRING },
+              fromLabel: { type: Type.STRING },
+              toLabel: { type: Type.STRING },
+              nodeId: { type: Type.STRING },
+              nodeAId: { type: Type.STRING },
+              nodeBId: { type: Type.STRING },
+              mergedLabel: { type: Type.STRING },
+              mergedDescription: { type: Type.STRING },
+              heading: { type: Type.STRING },
+              category: { type: Type.STRING },
+              body: { type: Type.STRING },
+              placeholder: { type: Type.BOOLEAN }
+            }
+          },
           justification: { type: Type.STRING },
           reasoning: { type: Type.STRING, description: "Detailed methodology reasoning for this proposal." },
           sourceSnippet: { type: Type.STRING },
@@ -298,22 +320,21 @@ export async function generateProposals(project: ProjectData, contextText?: stri
     6. DATA ENRICHMENT: Suggest updates to existing nodes if the new context provides more detail than what is currently recorded.
     7. RELATIONSHIP MAPPING: Suggest new connections between existing or new nodes.
     
-    PROPOSAL TYPES & DATA STRUCTURES:
-    1. 'create_node': Data: { label, type, description, placeholder, reasoning }.
-    2. 'create_edge': Data: { fromLabel, toLabel, label, type, reasoning }.
-    3. 'merge_nodes': Data: { nodeAId, nodeBId, mergedLabel, mergedDescription, reasoning }.
-    4. 'update_node': Data: { nodeId, label, description, type, reasoning }.
-    5. 'attach_evidence': Data: { nodeLabel, docTitle, reasoning }.
-    6. 'promote_placeholder': Data: { nodeId, reasoning }.
-    7. 'create_context': Data: { heading, category, body, reasoning }.
+    PROPOSAL TYPES & DATA STRUCTURES (MANDATORY FIELDS):
+    1. 'create_node': Data: { label: string, type: string, description: string, placeholder: boolean }. 
+       - USE SPECIFIC NAMES (e.g., "John Smith", not "Actor").
+    2. 'create_edge': Data: { fromLabel: string, toLabel: string, label: string, type: string }.
+       - fromLabel and toLabel MUST be the exact labels of the nodes.
+    3. 'merge_nodes': Data: { nodeAId: string, nodeBId: string, mergedLabel: string, mergedDescription: string }.
+    4. 'update_node': Data: { nodeId: string, label: string, description: string, type: string }.
+    5. 'attach_evidence': Data: { nodeLabel: string, docTitle: string }.
+    6. 'promote_placeholder': Data: { nodeId: string }.
+    7. 'create_context': Data: { heading: string, category: string, body: string }.
     
-    For each proposal:
-    - Provide a 'justification' (short summary for the user).
-    - Provide a 'reasoning' (detailed methodology explanation).
-    - Include a 'sourceSnippet' if the suggestion comes from the new context.
-    - Assign a 'confidence' score (high, medium, low).
-    
-    IMPORTANT: Be specific. Don't just say "Add node". Say "Add node: [Entity Name]".
+    IMPORTANT: 
+    - NEVER return "Untitled" or "?" for labels. 
+    - Extract specific names, dates, and institutions from the context.
+    - If you are creating a node, assign it a specific 'type' from the blueprint or standard types (actor, event, institution, etc.).
     `;
 
   const response = await ai.models.generateContent({

@@ -28,6 +28,7 @@ interface DocsTabProps {
 
 export default function DocsTab({ project, setProject, initialEditingDocId, onClearEditing }: DocsTabProps) {
   const [editingDocId, setEditingDocId] = useState<string | null>(null);
+  const [viewingDocId, setViewingDocId] = useState<string | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isFullEdit, setIsFullEdit] = useState(false);
   const [mobileView, setMobileView] = useState<'form' | 'list'>('list');
@@ -475,13 +476,21 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
 
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">
                   <div className="flex gap-2">
+                    {doc.imageData && (
+                      <button 
+                        onClick={() => setViewingDocId(doc.id)}
+                        className="text-accent hover:underline text-[10px] flex items-center gap-1"
+                      >
+                        <Eye size={10} /> VIEW ORIGINAL
+                      </button>
+                    )}
                     {doc.url && (
                       <a 
                         href={doc.url} 
                         target="_blank" 
                         className="text-accent hover:underline text-[10px] flex items-center gap-1"
                       >
-                        <LinkIcon size={10} /> VIEW
+                        <LinkIcon size={10} /> LINK
                       </a>
                     )}
                     <button 
@@ -509,6 +518,73 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
           </div>
         </div>
       </div>
+      {/* View Original Modal */}
+      {viewingDocId && (
+        <div className="fixed inset-0 bg-bg/95 backdrop-blur-md z-[100] flex flex-col p-4 md:p-10">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-[24px] font-serif text-text">
+                {project.documents.find(d => d.id === viewingDocId)?.title}
+              </h2>
+              <p className="text-[12px] text-muted uppercase tracking-widest">Original Document Reference</p>
+            </div>
+            <button 
+              onClick={() => setViewingDocId(null)}
+              className="p-3 bg-panel border border-border rounded-full hover:text-accent transition-all"
+            >
+              <X size={24} />
+            </button>
+          </div>
+          
+          <div className="flex-1 bg-panel border border-border rounded-xl overflow-hidden flex flex-col md:flex-row shadow-2xl">
+            <div className="flex-1 overflow-auto p-4 md:p-10 bg-surface/30 flex items-center justify-center">
+              {project.documents.find(d => d.id === viewingDocId)?.imageData ? (
+                project.documents.find(d => d.id === viewingDocId)?.mimeType?.startsWith('image/') ? (
+                  <img 
+                    src={project.documents.find(d => d.id === viewingDocId)?.imageData} 
+                    className="max-w-full shadow-2xl" 
+                    referrerPolicy="no-referrer" 
+                  />
+                ) : (
+                  <div className="flex flex-col items-center gap-4 text-muted">
+                    <FileText size={80} className="opacity-20" />
+                    <div className="text-[14px] font-bold uppercase tracking-widest">PDF Attachment</div>
+                    <div className="text-[12px] italic">Preview not available for PDF in browser.</div>
+                  </div>
+                )
+              ) : (
+                <div className="w-full max-w-2xl text-[14px] font-mono leading-relaxed text-muted whitespace-pre-wrap p-6">
+                  {project.documents.find(d => d.id === viewingDocId)?.originalContent || "No original content available."}
+                </div>
+              )}
+            </div>
+            
+            <div className="w-full md:w-[350px] border-t md:border-t-0 md:border-l border-border p-6 overflow-y-auto bg-panel">
+              <div className="text-[10px] uppercase font-bold text-accent mb-4 tracking-widest">Document Metadata</div>
+              <div className="space-y-4">
+                <div>
+                  <label className="text-[10px] text-muted uppercase font-bold block mb-1">Category</label>
+                  <div className="text-[13px]">{project.documents.find(d => d.id === viewingDocId)?.category}</div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted uppercase font-bold block mb-1">Institution</label>
+                  <div className="text-[13px]">{project.documents.find(d => d.id === viewingDocId)?.institution || 'Not specified'}</div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted uppercase font-bold block mb-1">Date</label>
+                  <div className="text-[13px]">{project.documents.find(d => d.id === viewingDocId)?.date || 'Not specified'}</div>
+                </div>
+                <div>
+                  <label className="text-[10px] text-muted uppercase font-bold block mb-1">Description</label>
+                  <div className="text-[13px] leading-relaxed text-muted italic">
+                    {project.documents.find(d => d.id === viewingDocId)?.description}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

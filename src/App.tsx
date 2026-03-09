@@ -1059,7 +1059,15 @@ export default function App() {
                         <h4 className="text-[10px] uppercase text-muted font-bold tracking-widest">Source Context</h4>
                       </div>
                       <div className="bg-bg border border-border p-4 rounded-lg h-[400px] overflow-y-auto text-[12px] font-serif leading-relaxed text-muted whitespace-pre-wrap">
-                        {importText || "Multimodal document (PDF/Image) - Text extracted by AI engine."}
+                        {importFile && importFile.mimeType.startsWith('image/') ? (
+                          <div className="flex flex-col gap-4">
+                            <img src={`data:${importFile.mimeType};base64,${importFile.data}`} className="max-w-full rounded shadow-lg" referrerPolicy="no-referrer" />
+                            <div className="text-[10px] uppercase font-bold text-accent tracking-widest">Extracted Text Below:</div>
+                            {importText || "Analyzing image content..."}
+                          </div>
+                        ) : (
+                          importText || "Multimodal document (PDF/Image) - Text extracted by AI engine."
+                        )}
                       </div>
                     </div>
 
@@ -1282,7 +1290,7 @@ export default function App() {
                   <div className="flex gap-4 pt-4 border-t border-border">
                     <button className="btn flex-1 py-4 flex items-center justify-center gap-2" onClick={commitImport}>
                       <CheckCircle size={16} />
-                      COMMIT {importResult.nodes.length} NODES & {importResult.edges.length} EDGES
+                      COMMIT TO PROJECT & SAVE DOCUMENT
                     </button>
                     <button className="btn btn-m flex-1 py-4" onClick={() => { setImportResult(null); setImportFile(null); }}>
                       CANCEL / START OVER

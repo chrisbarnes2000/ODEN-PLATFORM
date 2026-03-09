@@ -360,7 +360,15 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
         )}>
           {mobileView === 'merge' ? (
             <div className="max-w-xl">
-              <div className="font-serif text-[16px] text-accent mb-4">Merge Nodes</div>
+              <div className="flex items-center justify-between mb-4">
+                <div className="font-serif text-[16px] text-accent">Merge Nodes</div>
+                <button 
+                  onClick={() => setMobileView('edges')}
+                  className="text-[10px] text-accent hover:underline uppercase font-bold tracking-widest flex items-center gap-1"
+                >
+                  <X size={12} /> Back to Connections
+                </button>
+              </div>
               <p className="text-[12px] text-muted mb-6">
                 Combine two nodes into one. All connections from the "Source" node will be moved to the "Target" node, and the "Source" node will be deleted.
               </p>

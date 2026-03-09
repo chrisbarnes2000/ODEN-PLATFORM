@@ -96,13 +96,18 @@ export default function GraphView({
       const width = window.innerWidth;
       const height = window.innerHeight;
       setDimensions({ 
-        width: width, 
-        height: width < 768 ? height - 120 : height - 80 
+        width: Math.max(100, width), 
+        height: Math.max(100, width < 768 ? height - 160 : height - 80)
       });
     };
     window.addEventListener('resize', handleResize);
     handleResize();
-    return () => window.removeEventListener('resize', handleResize);
+    // Initial fit to screen
+    const timer = setTimeout(fitToScreen, 800);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      clearTimeout(timer);
+    };
   }, []);
 
   const fitToScreen = () => {
@@ -367,7 +372,7 @@ export default function GraphView({
               className="cursor-pointer"
             >
               <Circle
-                radius={15 + (filteredEdges.filter(e => e.from === node.id || e.to === node.id).length * 2)}
+                radius={(window.innerWidth < 768 ? 20 : 15) + (filteredEdges.filter(e => e.from === node.id || e.to === node.id).length * 2)}
                 fill={COLORS[node.type as NodeType] || '#888'}
                 stroke={selectedNodeIds.has(node.id) ? '#fff' : 'transparent'}
                 strokeWidth={2}

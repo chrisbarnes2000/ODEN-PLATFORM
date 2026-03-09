@@ -96,6 +96,7 @@ export default function App() {
   const [simulationTrigger, setSimulationTrigger] = useState(0);
   const [isGeneratingProposals, setIsGeneratingProposals] = useState(false);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const handleGenerateProposals = async (contextText?: string, customProject?: ProjectData) => {
     setIsGeneratingProposals(true);
@@ -289,13 +290,17 @@ export default function App() {
     
     const newDoc: DocumentData = {
       id: `doc-${Date.now()}`,
-      title: importFile?.name || 'Imported Document',
+      title: importFile?.name || (importText.split('\n')[0].substring(0, 50)) || 'Imported Document',
       category: 'Evidence',
       status: 'received',
-      description: importText || 'Uploaded via simple import.',
+      description: `Uploaded on ${new Date().toLocaleString()}`,
+      originalContent: importText || undefined,
       date: new Date().toISOString().split('T')[0],
       url: '',
-      nodeIds: []
+      nodeIds: [],
+      fileName: importFile?.name,
+      mimeType: importFile?.mimeType || 'text/plain',
+      imageData: importFile?.data
     };
     
     setProject(prev => ({
@@ -421,10 +426,13 @@ export default function App() {
       category: 'RESEARCH',
       status: 'received',
       description: `Imported on ${new Date().toLocaleString()}`,
+      originalContent: importText || undefined,
+      summary: importResult.context,
       nodeIds: newNodes.map(n => n.id),
       date: new Date().toISOString().split('T')[0],
       fileName: importFile?.name,
-      mimeType: importFile?.mimeType || 'text/plain'
+      mimeType: importFile?.mimeType || 'text/plain',
+      imageData: importFile?.data
     };
 
     const newSection: ContextSection = {
@@ -498,33 +506,96 @@ export default function App() {
       </header>
 
       {/* Tabs */}
-      <nav className="flex border-b border-border bg-panel flex-shrink-0 overflow-x-auto">
-        {[
-          { id: 'guide', label: '? Quick Start', icon: Info },
-          { id: 'map', label: '◈ Map', icon: MapIcon },
-          { id: 'context', label: '≡ Context', icon: FileText },
-          { id: 'docs', label: '☰ Documents', icon: Database },
-          { id: 'sources', label: 'Sources', icon: Globe },
-          { id: 'blueprint', label: '☷ Blueprint', icon: Layers },
-          { id: 'nodes', label: '⊞ Nodes & Edges', icon: Plus },
-          { id: 'check', label: '✓ Methodology', icon: CheckCircle },
-          { id: 'proposals', label: '✧ Proposals', icon: Sparkles },
-          { id: 'ai-insights', label: '✧ AI Insights', icon: BrainCircuit },
-          { id: 'import', label: '⇑ Smart Import', icon: FileUp },
-          { id: 'save', label: '⇓ Save', icon: Save },
-        ].map(tab => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            className={cn(
-              "tab-btn flex items-center gap-2",
-              activeTab === tab.id && "active"
-            )}
+      <nav className="flex border-b border-border bg-panel flex-shrink-0 overflow-x-auto relative no-scrollbar">
+        <div className="flex md:hidden items-center px-4 border-r border-border bg-surface z-50 sticky left-0">
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 text-accent hover:bg-white/5 transition-colors"
           >
-            <tab.icon size={14} />
-            {tab.label.toUpperCase()}
+            {isMobileMenuOpen ? <X size={20} /> : <Plus size={20} className="rotate-45" />}
           </button>
-        ))}
+        </div>
+
+        <AnimatePresence>
+          {isMobileMenuOpen && (
+            <motion.div 
+              initial={{ opacity: 0, y: -20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+              className="absolute top-full left-0 w-full bg-panel border-b border-border z-50 md:hidden shadow-2xl overflow-y-auto max-h-[70vh]"
+            >
+              <div className="flex flex-col p-2">
+                {[
+                  { id: 'guide', label: '? Quick Start', icon: Info },
+                  { id: 'map', label: '◈ Map', icon: MapIcon },
+                  { id: 'context', label: '≡ Context', icon: FileText },
+                  { id: 'docs', label: '☰ Documents', icon: Database },
+                  { id: 'sources', label: 'Sources', icon: Globe },
+                  { id: 'blueprint', label: '☷ Blueprint', icon: Layers },
+                  { id: 'nodes', label: '⊞ Nodes & Edges', icon: Plus },
+                  { id: 'check', label: '✓ Methodology', icon: CheckCircle },
+                  { id: 'import', label: '⇑ Smart Import', icon: FileUp, ai: true },
+                  { id: 'proposals', label: '✧ Proposals', icon: Sparkles, ai: true },
+                  { id: 'ai-insights', label: '✧ AI Insights', icon: BrainCircuit, ai: true },
+                  { id: 'save', label: '⇓ Save', icon: Save },
+                ].map((tab: any) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => {
+                      setActiveTab(tab.id);
+                      setIsMobileMenuOpen(false);
+                    }}
+                    className={cn(
+                      "flex items-center gap-3 p-4 text-[12px] tracking-[1px] uppercase font-bold transition-all border-b border-border/50 last:border-none",
+                      activeTab === tab.id ? "text-accent bg-accent/5" : "text-muted hover:text-text",
+                      tab.ai && "text-accent/70"
+                    )}
+                  >
+                    <tab.icon size={16} />
+                    {tab.label}
+                  </button>
+                ))}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        <div className="flex flex-nowrap">
+          {[
+            { id: 'guide', label: '? Quick Start', icon: Info },
+            { id: 'map', label: '◈ Map', icon: MapIcon },
+            { id: 'context', label: '≡ Context', icon: FileText },
+            { id: 'docs', label: '☰ Documents', icon: Database },
+            { id: 'sources', label: 'Sources', icon: Globe },
+            { id: 'blueprint', label: '☷ Blueprint', icon: Layers },
+            { id: 'nodes', label: '⊞ Nodes & Edges', icon: Plus },
+            { id: 'check', label: '✓ Methodology', icon: CheckCircle },
+            { type: 'divider' },
+            { id: 'import', label: '⇑ Smart Import', icon: FileUp, ai: true },
+            { id: 'proposals', label: '✧ Proposals', icon: Sparkles, ai: true },
+            { id: 'ai-insights', label: '✧ AI Insights', icon: BrainCircuit, ai: true },
+            { type: 'divider' },
+            { id: 'save', label: '⇓ Save', icon: Save },
+          ].map((tab: any, idx) => (
+            tab.type === 'divider' ? (
+              <div key={`div-${idx}`} className="w-[1px] h-6 bg-border self-center mx-2 shrink-0 hidden md:block" />
+            ) : (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={cn(
+                  "tab-btn flex items-center gap-2 shrink-0",
+                  activeTab === tab.id && "active",
+                  tab.ai && "text-accent/70 hover:text-accent"
+                )}
+              >
+                <tab.icon size={14} />
+                <span className="hidden sm:inline">{tab.label.toUpperCase()}</span>
+                <span className="sm:hidden">{tab.label.split(' ')[0]}</span>
+              </button>
+            )
+          ))}
+        </div>
       </nav>
 
       {/* Content */}

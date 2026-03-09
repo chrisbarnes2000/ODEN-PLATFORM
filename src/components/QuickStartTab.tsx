@@ -54,6 +54,19 @@ export default function QuickStartTab() {
 
         <section>
           <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
+            <FileUp size={20} /> 2. Importing Data
+          </h3>
+          <p className="text-[13px] text-muted leading-relaxed mb-4">
+            The <strong className="text-text uppercase">Smart Import</strong> tab offers two ways to bring data into ODEN:
+          </p>
+          <ul className="space-y-3 text-[12px] text-muted mb-6 ml-4">
+            <li><strong className="text-text">Smart Extract (AI):</strong> Uses AI to analyze your text/files and suggest nodes, edges, and a summary. This is an "Investigative Partner" that helps you find patterns quickly.</li>
+            <li><strong className="text-text">Simple Upload (No AI):</strong> Directly uploads your document to the Documents tab without any AI processing. Use this if you want to manually map your data from scratch.</li>
+          </ul>
+        </section>
+
+        <section>
+          <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
             <Plus size={20} /> 3. Building the Network
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
@@ -82,6 +95,14 @@ export default function QuickStartTab() {
               </div>
             </li>
           </ul>
+          <div className="bg-surface border border-border p-4 rounded mt-4">
+            <h4 className="text-[11px] font-bold uppercase text-accent mb-2 flex items-center gap-2">
+              <Plus size={14} /> Merge Tool
+            </h4>
+            <p className="text-[12px] text-muted leading-relaxed">
+              If you find redundant nodes (e.g., the same person with two different names), use the <strong className="text-text">MERGE TOOL</strong> in the Nodes tab. This combines their data and redirects all connections to a single "Target" node.
+            </p>
+          </div>
         </section>
 
         <section>
@@ -147,8 +168,15 @@ export default function QuickStartTab() {
             <CheckCircle size={20} /> 5. Methodology Check
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
-            The <strong className="text-text uppercase">Methodology Check</strong> tab provides a space for self-reflection. It asks questions designed to help you evaluate the strength of your findings and identify potential biases in your research.
+            The <strong className="text-text uppercase">Methodology Check</strong> tab provides an automated analysis of your investigation's structural integrity. It measures your research against the core ODEN parameters:
           </p>
+          <ul className="space-y-2 text-[12px] text-muted mb-6 ml-4 list-disc">
+            <li><strong className="text-text">Baseline Definition:</strong> Ensuring the event title, date, and location are set.</li>
+            <li><strong className="text-text">Controller Identification:</strong> Verifying that institutions with authority are mapped.</li>
+            <li><strong className="text-text">Traceability:</strong> Checking that nodes are anchored to primary sources and blueprint sections.</li>
+            <li><strong className="text-text">Network Integrity:</strong> Identifying isolated nodes or missing convergence points.</li>
+            <li><strong className="text-text">Process Logging:</strong> Tracking FOIA/Archive requests and their outcomes (denials, referrals).</li>
+          </ul>
         </section>
       </div>
 

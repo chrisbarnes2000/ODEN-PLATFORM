@@ -56,6 +56,8 @@ export interface DocumentData {
   date?: string;
   url?: string;
   description: string;
+  originalContent?: string;
+  summary?: string;
   nodeIds: string[];
   imageData?: string;
   fileName?: string;

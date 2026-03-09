@@ -67,6 +67,47 @@ export default function MethodologyCheckTab({ project }: MethodologyCheckTabProp
       checks.push({ pass: true, title: `${convergenceNodes.length} convergence point${convergenceNodes.length !== 1 ? 's' : ''} detected`, detail: 'These nodes show up across multiple relationship types.' });
     }
 
+    // 6. Event Definition
+    const bp = project.blueprint;
+    const eventDefined = bp.eventTitle && bp.eventDate && bp.eventLocation;
+    if (!eventDefined) {
+      checks.push({ pass: false, title: 'Event parameters incomplete', detail: 'The methodology requires a clear baseline. Ensure Title, Date, and Location are defined in the Blueprint.' });
+    } else {
+      checks.push({ pass: true, title: 'Event baseline defined', detail: 'Title, Date, and Location are set in the Blueprint.' });
+    }
+
+    // 7. Controller Identification
+    const controllers = nodes.filter(n => n.type === 'institution' || n.type === 'network');
+    if (controllers.length === 0) {
+      checks.push({ pass: false, title: 'No Controllers identified', detail: 'You must identify the institutions or networks that had authority over the environment or documentation.' });
+    } else {
+      checks.push({ pass: true, title: `${controllers.length} Controller${controllers.length !== 1 ? 's' : ''} identified`, detail: 'Institutions/Networks are mapped as controllers.' });
+    }
+
+    // 8. Expected Records
+    if (!bp.expectedRecords || bp.expectedRecords.length < 10) {
+      checks.push({ pass: false, title: 'Expected records not defined', detail: 'Document what should normally exist on paper so that its absence is measurable.' });
+    } else {
+      checks.push({ pass: true, title: 'Expected records defined', detail: 'You have documented the "paper trail" that should exist.' });
+    }
+
+    // 9. Requests Logged
+    const requests = project.documents.filter(d => d.status === 'requested' || d.status === 'denied' || d.status === 'pending');
+    if (requests.length === 0) {
+      checks.push({ pass: false, title: 'No record requests logged', detail: 'The methodology tracks the process of seeking information. Log your FOIA or archive requests in the Documents tab.' });
+    } else {
+      checks.push({ pass: true, title: `${requests.length} request${requests.length !== 1 ? 's' : ''} logged`, detail: 'You are tracking the process of seeking information.' });
+    }
+
+    // 10. Claims Anchored
+    const anchoredNodes = nodes.filter(n => n.sectionId);
+    const anchorPct = nodes.length === 0 ? 0 : Math.round((anchoredNodes.length / nodes.length) * 100);
+    if (anchorPct < 50 && nodes.length > 0) {
+      checks.push({ pass: false, title: 'Low claim anchoring', detail: `Only ${anchorPct}% of your nodes are anchored to Blueprint sections. Anchor nodes to specific claims to ensure traceability.` });
+    } else if (nodes.length > 0) {
+      checks.push({ pass: true, title: 'Claims are anchored', detail: `${anchorPct}% of nodes are tied to specific Blueprint sections.` });
+    }
+
     return checks;
   };
 

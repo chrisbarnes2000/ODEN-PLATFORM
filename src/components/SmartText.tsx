@@ -16,7 +16,8 @@ export default function SmartText({ text, project, onSelectNode }: SmartTextProp
       const newResult: (string | { nodeId: string, label: string })[] = [];
       result.forEach(part => {
         if (typeof part === 'string') {
-          const regex = new RegExp(`(${node.label})`, 'gi');
+          const escapedLabel = node.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escapedLabel})`, 'gi');
           const split = part.split(regex);
           split.forEach(s => {
             if (s.toLowerCase() === node.label.toLowerCase()) {

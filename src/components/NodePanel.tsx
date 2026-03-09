@@ -77,8 +77,8 @@ export default function NodePanel({
           <h3 className="text-[24px] font-serif leading-tight">{node.label}</h3>
           {node.date && <div className="text-[11px] font-mono text-muted italic">{node.date}</div>}
         </div>
-        <button onClick={onClose} className="p-2 text-muted hover:text-text transition-colors">
-          <X size={20} />
+        <button onClick={onClose} className="p-3 -mr-2 text-muted hover:text-text transition-colors">
+          <X size={24} />
         </button>
       </div>
 

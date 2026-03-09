@@ -1053,8 +1053,17 @@ export default function App() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div className="lg:col-span-1 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-[10px] uppercase text-muted font-bold tracking-widest">Source Context</h4>
+                      </div>
+                      <div className="bg-bg border border-border p-4 rounded-lg h-[400px] overflow-y-auto text-[12px] font-serif leading-relaxed text-muted whitespace-pre-wrap">
+                        {importText || "Multimodal document (PDF/Image) - Text extracted by AI engine."}
+                      </div>
+                    </div>
+
+                    <div className="lg:col-span-1 space-y-4">
                       <div className="flex items-center justify-between">
                         <h4 className="text-[10px] uppercase text-muted font-bold tracking-widest">Extracted Nodes ({importResult.nodes.length})</h4>
                         <button 

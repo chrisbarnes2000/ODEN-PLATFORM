@@ -13,6 +13,7 @@ export default function SmartText({ text, project, onSelectNode }: SmartTextProp
     let result: (string | { nodeId: string, label: string })[] = [text];
     
     project.nodes.forEach(node => {
+      if (!node.label.trim()) return;
       const newResult: (string | { nodeId: string, label: string })[] = [];
       result.forEach(part => {
         if (typeof part === 'string') {

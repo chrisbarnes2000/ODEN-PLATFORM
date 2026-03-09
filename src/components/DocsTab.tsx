@@ -108,6 +108,9 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
     setEditingDocId(doc.id);
     setNewDoc(doc);
     setMobileView('form');
+    if (doc.originalContent && doc.originalContent.length > 500) {
+      setIsFullEdit(true);
+    }
   };
 
   return (
@@ -147,9 +150,10 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
             {editingDocId && (
               <button 
                 onClick={() => setIsFullEdit(!isFullEdit)}
-                className="text-muted hover:text-accent p-1 transition-colors"
+                className="flex items-center gap-2 text-muted hover:text-accent p-1 transition-colors"
                 title={isFullEdit ? "Exit Full Screen" : "Full Screen Edit"}
               >
+                <span className="text-[10px] font-bold uppercase tracking-widest">{isFullEdit ? "Exit Full Screen" : "Full Screen Edit"}</span>
                 {isFullEdit ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
               </button>
             )}
@@ -423,8 +427,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
         {/* Right Content: List */}
         <div className={cn(
           "flex-1 overflow-y-auto p-8 bg-bg",
-          "md:block",
-          mobileView === 'list' ? "block" : "hidden"
+          (isFullEdit || mobileView === 'form') ? "hidden" : "md:block"
         )}>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {project.documents.map(doc => (
@@ -462,6 +465,12 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 
                 {doc.description && (
                   <p className="text-[12px] text-muted leading-relaxed mb-4">{doc.description}</p>
+                )}
+
+                {doc.originalContent && (
+                  <div className="mb-4 p-3 bg-bg/50 border border-border/50 rounded text-[11px] text-muted font-mono line-clamp-3">
+                    {doc.originalContent}
+                  </div>
                 )}
 
                 <div className="flex items-center justify-between mt-auto pt-4 border-t border-border">

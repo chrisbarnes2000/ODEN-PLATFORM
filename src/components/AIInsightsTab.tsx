@@ -209,7 +209,7 @@ export default function AIInsightsTab({ project, onUpdateBriefing }: AIInsightsT
             <input 
               className="w-full bg-surface border border-border rounded-lg pl-4 pr-12 py-3 text-[13px] outline-none focus:border-accent transition-colors"
               placeholder="Ask about the case..."
-              value={chatMessage}
+              value={chatMessage || ''}
               onChange={e => setChatMessage(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSendMessage()}
             />

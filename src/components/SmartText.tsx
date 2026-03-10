@@ -13,7 +13,7 @@ export default function SmartText({ text, project, onSelectNode }: SmartTextProp
     let result: (string | { nodeId: string, label: string })[] = [text];
     
     project.nodes.forEach(node => {
-      if (!node.label.trim()) return;
+      if (!node.label || !node.label.trim()) return;
       const newResult: (string | { nodeId: string, label: string })[] = [];
       result.forEach(part => {
         if (typeof part === 'string') {
@@ -21,7 +21,7 @@ export default function SmartText({ text, project, onSelectNode }: SmartTextProp
           const regex = new RegExp(`(${escapedLabel})`, 'gi');
           const split = part.split(regex);
           split.forEach(s => {
-            if (s.toLowerCase() === node.label.toLowerCase()) {
+            if (s && node.label && s.toLowerCase() === node.label.toLowerCase()) {
               newResult.push({ nodeId: node.id, label: s });
             } else if (s) {
               newResult.push(s);

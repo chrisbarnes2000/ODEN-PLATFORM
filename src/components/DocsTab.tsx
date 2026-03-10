@@ -167,14 +167,14 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                   <label>Title</label>
                   <input 
                     type="text" 
-                    value={newDoc.title}
+                    value={newDoc.title || ''}
                     onChange={e => setNewDoc(prev => ({ ...prev, title: e.target.value }))}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="frow">
                     <label>Category</label>
-                    <select value={newDoc.category} onChange={e => setNewDoc(prev => ({ ...prev, category: e.target.value }))}>
+                    <select value={newDoc.category || ''} onChange={e => setNewDoc(prev => ({ ...prev, category: e.target.value }))}>
                       <option>Travel Records</option>
                       <option>Correspondence</option>
                       <option>Field Notes</option>
@@ -188,7 +188,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                   </div>
                   <div className="frow">
                     <label>Status</label>
-                    <select value={newDoc.status} onChange={e => setNewDoc(prev => ({ ...prev, status: e.target.value as any }))}>
+                    <select value={newDoc.status || ''} onChange={e => setNewDoc(prev => ({ ...prev, status: e.target.value as any }))}>
                       <option value="received">Received</option>
                       <option value="requested">Requested</option>
                       <option value="pending">Pending</option>
@@ -200,7 +200,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                   <label>AI Summary / Description</label>
                   <textarea 
                     className="min-h-[150px] font-serif"
-                    value={newDoc.description}
+                    value={newDoc.description || ''}
                     onChange={e => setNewDoc(prev => ({ ...prev, description: e.target.value }))}
                   />
                 </div>
@@ -209,7 +209,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                   <select 
                     multiple 
                     className="min-h-[150px]"
-                    value={newDoc.nodeIds}
+                    value={newDoc.nodeIds || []}
                     onChange={e => setNewDoc(prev => ({ 
                       ...prev, 
                       nodeIds: Array.from(e.target.selectedOptions).map(o => o.value) 
@@ -266,14 +266,14 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 <input 
                   type="text" 
                   placeholder="e.g. Trevor Kincaid USDA Travel Voucher" 
-                  value={newDoc.title}
+                  value={newDoc.title || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, title: e.target.value }))}
                 />
               </div>
               <div className="frow">
                 <label>Category</label>
                 <select 
-                  value={newDoc.category}
+                  value={newDoc.category || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, category: e.target.value }))}
                 >
                   <option>Travel Records</option>
@@ -290,7 +290,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
               <div className="frow">
                 <label>Status</label>
                 <select 
-                  value={newDoc.status}
+                  value={newDoc.status || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, status: e.target.value as any }))}
                 >
                   <option value="received">Received / In Hand</option>
@@ -304,7 +304,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 <input 
                   type="text" 
                   placeholder="e.g. NARA College Park" 
-                  value={newDoc.institution}
+                  value={newDoc.institution || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, institution: e.target.value }))}
                 />
               </div>
@@ -313,7 +313,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 <input 
                   type="text" 
                   placeholder="e.g. April 7, 1909" 
-                  value={newDoc.date}
+                  value={newDoc.date || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, date: e.target.value }))}
                 />
               </div>
@@ -322,7 +322,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 <input 
                   type="text" 
                   placeholder="https://..." 
-                  value={newDoc.url}
+                  value={newDoc.url || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, url: e.target.value }))}
                 />
               </div>
@@ -374,7 +374,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 <label>Description</label>
                 <textarea 
                   placeholder="What does this document show?" 
-                  value={newDoc.description}
+                  value={newDoc.description || ''}
                   onChange={e => setNewDoc(prev => ({ ...prev, description: e.target.value }))}
                 />
               </div>
@@ -383,7 +383,7 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
                 <select 
                   multiple 
                   className="min-h-[100px]"
-                  value={newDoc.nodeIds}
+                  value={newDoc.nodeIds || []}
                   onChange={e => setNewDoc(prev => ({ 
                     ...prev, 
                     nodeIds: Array.from(e.target.selectedOptions).map(o => o.value) 

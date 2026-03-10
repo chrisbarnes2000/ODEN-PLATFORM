@@ -24,6 +24,15 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
   const [isEditing, setIsEditing] = useState(false);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [mobileView, setMobileView] = useState<'list' | 'editor'>('list');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ message: string, onConfirm: () => void } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   useEffect(() => {
     if (initialSectionId) {
@@ -63,13 +72,18 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
   };
 
   const deleteSection = (id: string) => {
-    if (!confirm('Delete this section?')) return;
-    setProject(prev => ({
-      ...prev,
-      sections: prev.sections.filter(s => s.id !== id),
-      nodes: prev.nodes.map(n => n.sectionId === id ? { ...n, sectionId: undefined } : n),
-    }));
-    if (activeSecId === id) setActiveSecId(null);
+    setConfirmAction({
+      message: 'Delete this section?',
+      onConfirm: () => {
+        setProject(prev => ({
+          ...prev,
+          sections: prev.sections.filter(s => s.id !== id),
+          nodes: prev.nodes.map(n => n.sectionId === id ? { ...n, sectionId: undefined } : n),
+        }));
+        if (activeSecId === id) setActiveSecId(null);
+        setToast({ message: 'Section deleted successfully.', type: 'success' });
+      }
+    });
   };
 
   const linkNode = (nodeId: string) => {
@@ -138,7 +152,7 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
             <input 
               type="text" 
               placeholder="e.g. BURDEN OF PROOF" 
-              value={newSecCat}
+              value={newSecCat || ''}
               onChange={e => setNewSecCat(e.target.value)}
             />
           </div>
@@ -147,7 +161,7 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
             <input 
               type="text" 
               placeholder="e.g. The Institutional Access Problem" 
-              value={newSecHdg}
+              value={newSecHdg || ''}
               onChange={e => setNewSecHdg(e.target.value)}
             />
           </div>
@@ -229,7 +243,7 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
               <textarea 
                 className="w-full bg-bg border border-border text-text font-serif text-[14px] p-4 min-h-[400px] outline-none focus:border-accent leading-relaxed"
                 placeholder="Write your section content here..."
-                value={activeSection.body}
+                value={activeSection.body || ''}
                 onChange={e => updateBody(e.target.value)}
               />
             ) : (
@@ -279,6 +293,47 @@ export default function ContextTab({ project, setProject, onSelectNode, onSwitch
         )}
       </div>
     </div>
+
+    {/* Confirmation Modal */}
+    {confirmAction && (
+      <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm">
+        <div className="bg-panel border border-border p-8 rounded-xl shadow-2xl max-w-sm w-full text-center">
+          <h3 className="text-[18px] font-serif text-text mb-2">Are you sure?</h3>
+          <p className="text-[13px] text-muted mb-8 leading-relaxed">
+            {confirmAction.message}
+          </p>
+          <div className="flex gap-3">
+            <button 
+              className="btn btn-m flex-1"
+              onClick={() => setConfirmAction(null)}
+            >
+              CANCEL
+            </button>
+            <button 
+              className="btn btn-d flex-1"
+              onClick={() => {
+                confirmAction.onConfirm();
+                setConfirmAction(null);
+              }}
+            >
+              CONFIRM
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
+    {/* Toast Notification */}
+    {toast && (
+      <div 
+        className={cn(
+          "fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border text-[12px] font-bold uppercase tracking-widest bg-bg",
+          toast.type === 'success' ? "border-[#7a9e7e] text-[#7a9e7e]" : "border-[#a04040] text-[#a04040]"
+        )}
+      >
+        {toast.message}
+      </div>
+    )}
   </div>
 );
 }
@@ -289,13 +344,15 @@ function SmartText({ text, project, onSelectNode }: { text: string, project: Pro
     let result: (string | { nodeId: string, label: string })[] = [text];
     
     project.nodes.forEach(node => {
+      if (!node.label || !node.label.trim()) return;
       const newResult: (string | { nodeId: string, label: string })[] = [];
       result.forEach(part => {
         if (typeof part === 'string') {
-          const regex = new RegExp(`(${node.label})`, 'gi');
+          const escapedLabel = node.label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+          const regex = new RegExp(`(${escapedLabel})`, 'gi');
           const split = part.split(regex);
           split.forEach(s => {
-            if (s.toLowerCase() === node.label.toLowerCase()) {
+            if (s && node.label && s.toLowerCase() === node.label.toLowerCase()) {
               newResult.push({ nodeId: node.id, label: s });
             } else if (s) {
               newResult.push(s);

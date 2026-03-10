@@ -12,7 +12,7 @@ import {
   Mail 
 } from 'lucide-react';
 import { NodeData, ProjectData, NodeType } from '../types';
-import { COLORS } from '../constants';
+import { COLORS, getNodeColor } from '../constants';
 import SmartText from './SmartText';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -46,11 +46,11 @@ export default function NodePanel({
   const linkedDocs = project.documents.filter(d => d.nodeIds.includes(node.id));
   const linkedSources = project.sources.filter(s => 
     node.sources.some(ns => ns.url === s.url) || 
-    node.description.toLowerCase().includes(s.url.toLowerCase())
+    (node.description && s.url && node.description.toLowerCase().includes(s.url.toLowerCase()))
   );
   
   const backlinks = project.nodes.filter(n => 
-    n.id !== node.id && n.description.toLowerCase().includes(node.label.toLowerCase())
+    n.id !== node.id && n.description && node.label && n.description.toLowerCase().includes(node.label.toLowerCase())
   );
 
   const incomingEdges = project.edges.filter(e => e.to === node.id);
@@ -65,7 +65,7 @@ export default function NodePanel({
       <div className="flex justify-between items-start mb-4">
         <div className="flex flex-col gap-1">
           <div className="flex items-center gap-2">
-            <div className="text-[10px] tracking-[2px] uppercase font-bold" style={{ color: COLORS[node.type] }}>
+            <div className="text-[10px] tracking-[2px] uppercase font-bold" style={{ color: getNodeColor(node.type) }}>
               {node.type}
             </div>
             {node.placeholder && (

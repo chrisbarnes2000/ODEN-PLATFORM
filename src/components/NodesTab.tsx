@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Plus, Trash2, Edit2, Link as LinkIcon, X, User, Building, MapPin, Calendar, FileText, HelpCircle } from 'lucide-react';
-import { PHASES } from '../constants';
+import { PHASES, COLORS, getNodeColor } from '../constants';
 import { ProjectData, NodeData, EdgeData, NodeType } from '../types';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
@@ -8,31 +8,6 @@ import { twMerge } from 'tailwind-merge';
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
-
-const COLORS: Record<NodeType, string> = {
-  case: '#ff4444',
-  event: '#ff8800',
-  actor: '#c8923f',
-  institution: '#7a9e7e',
-  gap: '#5a8fc4',
-  location: '#b07e85',
-  media: '#c49a6c',
-  document: '#7ab8b0',
-  concept: '#a87ab8',
-  object: '#7a9e6a',
-  relation: '#c47a8a',
-  financial: '#a8c44a',
-  witness: '#7aaed4',
-  suspect: '#c46a4a',
-  law: '#6a8ab8',
-  science: '#7ac4b8',
-  family: '#c4606a',
-  network: '#4ab8a8',
-  period: '#c4a882',
-  alias: '#c4907a',
-  rumor: '#b87a9a',
-  pattern: '#6a8aaa',
-};
 
 interface NodesTabProps {
   project: ProjectData;
@@ -47,6 +22,15 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
   const [mobileView, setMobileView] = useState<'nodes' | 'edges' | 'merge'>('nodes');
   const [mergeSourceId, setMergeSourceId] = useState<string | null>(null);
   const [mergeTargetId, setMergeTargetId] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [confirmAction, setConfirmAction] = useState<{ message: string, onConfirm: () => void } | null>(null);
+
+  React.useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleMerge = () => {
     if (!mergeSourceId || !mergeTargetId || mergeSourceId === mergeTargetId) return;
@@ -56,34 +40,37 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
     
     if (!sourceNode || !targetNode) return;
 
-    if (!confirm(`Merge "${sourceNode.label}" into "${targetNode.label}"? This will move all connections and delete "${sourceNode.label}".`)) return;
+    setConfirmAction({
+      message: `Merge "${sourceNode.label}" into "${targetNode.label}"? This will move all connections and delete "${sourceNode.label}".`,
+      onConfirm: () => {
+        // 1. Update edges to point to targetNode
+        const updatedEdges = project.edges.map(edge => {
+          let newEdge = { ...edge };
+          if (edge.from === mergeSourceId) newEdge.from = mergeTargetId;
+          if (edge.to === mergeSourceId) newEdge.to = mergeTargetId;
+          return newEdge;
+        }).filter(edge => edge.from !== edge.to); // Remove self-loops
 
-    // 1. Update edges to point to targetNode
-    const updatedEdges = project.edges.map(edge => {
-      let newEdge = { ...edge };
-      if (edge.from === mergeSourceId) newEdge.from = mergeTargetId;
-      if (edge.to === mergeSourceId) newEdge.to = mergeTargetId;
-      return newEdge;
-    }).filter(edge => edge.from !== edge.to); // Remove self-loops
+        // 2. Merge data (tags, sources, description)
+        const updatedTargetNode: NodeData = {
+          ...targetNode,
+          description: `${targetNode.description}\n\nMerged from ${sourceNode.label}: ${sourceNode.description}`,
+          tags: Array.from(new Set([...targetNode.tags, ...sourceNode.tags])),
+          sources: [...targetNode.sources, ...sourceNode.sources],
+        };
 
-    // 2. Merge data (tags, sources, description)
-    const updatedTargetNode: NodeData = {
-      ...targetNode,
-      description: `${targetNode.description}\n\nMerged from ${sourceNode.label}: ${sourceNode.description}`,
-      tags: Array.from(new Set([...targetNode.tags, ...sourceNode.tags])),
-      sources: [...targetNode.sources, ...sourceNode.sources],
-    };
+        // 3. Update project
+        setProject(prev => ({
+          ...prev,
+          nodes: prev.nodes.filter(n => n.id !== mergeSourceId).map(n => n.id === mergeTargetId ? updatedTargetNode : n),
+          edges: updatedEdges,
+        }));
 
-    // 3. Update project
-    setProject(prev => ({
-      ...prev,
-      nodes: prev.nodes.filter(n => n.id !== mergeSourceId).map(n => n.id === mergeTargetId ? updatedTargetNode : n),
-      edges: updatedEdges,
-    }));
-
-    setMergeSourceId(null);
-    setMergeTargetId(null);
-    alert('Nodes merged successfully.');
+        setMergeSourceId(null);
+        setMergeTargetId(null);
+        setToast({ message: 'Nodes merged successfully.', type: 'success' });
+      }
+    });
   };
 
   React.useEffect(() => {
@@ -174,12 +161,17 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
   };
 
   const deleteNode = (id: string) => {
-    if (!confirm('Delete this node and all its connections?')) return;
-    setProject(prev => ({
-      ...prev,
-      nodes: prev.nodes.filter(n => n.id !== id),
-      edges: prev.edges.filter(e => e.from !== id && e.to !== id),
-    }));
+    setConfirmAction({
+      message: 'Delete this node and all its connections?',
+      onConfirm: () => {
+        setProject(prev => ({
+          ...prev,
+          nodes: prev.nodes.filter(n => n.id !== id),
+          edges: prev.edges.filter(e => e.from !== id && e.to !== id),
+        }));
+        setToast({ message: 'Node deleted successfully.', type: 'success' });
+      }
+    });
   };
 
   const editNode = (n: NodeData) => {
@@ -235,14 +227,14 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
             <input 
               type="text" 
               placeholder="e.g. Trevor Kincaid, USDA, or Cave Entrance" 
-              value={newNode.label}
+              value={newNode.label || ''}
               onChange={e => setNewNode(prev => ({ ...prev, label: e.target.value }))}
             />
           </div>
           <div className="frow">
             <label>Type</label>
             <select 
-              value={newNode.type}
+              value={newNode.type || ''}
               onChange={e => setNewNode(prev => ({ ...prev, type: e.target.value as NodeType }))}
             >
               {Object.keys(COLORS).map(type => (
@@ -254,7 +246,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
             <label>Description</label>
             <textarea 
               placeholder="What is this entity and why does it matter? Anchor this to a primary source if possible." 
-              value={newNode.description}
+              value={newNode.description || ''}
               onChange={e => setNewNode(prev => ({ ...prev, description: e.target.value }))}
             />
           </div>
@@ -263,7 +255,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
             <input 
               type="text" 
               placeholder="Federal agency, 1909, Access control" 
-              value={newNode.tags?.join(', ')}
+              value={newNode.tags?.join(', ') || ''}
               onChange={e => setNewNode(prev => ({ ...prev, tags: e.target.value.split(',').map(t => t.trim()).filter(Boolean) }))}
             />
           </div>
@@ -271,7 +263,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
             <label>Sources (one per line: Label | URL)</label>
             <textarea 
               placeholder="NARA Finding Aid | https://archives.gov/..." 
-              value={sourceInput}
+              value={sourceInput || ''}
               onChange={e => setSourceInput(e.target.value)}
             />
           </div>
@@ -330,7 +322,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
           <div className="space-y-2">
             {project.nodes.map(n => (
               <div key={n.id} className="flex items-center gap-3 border border-border p-2 hover:border-border2 transition-all group">
-                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[n.type] }} />
+                <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getNodeColor(n.type) }} />
                 <span className="flex-1 text-[12px] truncate">{n.label}</span>
                 <div className="flex gap-1 opacity-100 md:opacity-0 md:group-hover:opacity-100 transition-opacity">
                   <button onClick={() => { setEditingNodeId(n.id); setNewNode(n); }} className="text-muted hover:text-accent"><Edit2 size={12} /></button>
@@ -421,7 +413,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
                 <div className="frow">
                   <label>From Node</label>
                   <select 
-                    value={newEdge.from}
+                    value={newEdge.from || ''}
                     onChange={e => setNewEdge(prev => ({ ...prev, from: e.target.value }))}
                   >
                     <option value="">— select —</option>
@@ -431,7 +423,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
                 <div className="frow">
                   <label>To Node</label>
                   <select 
-                    value={newEdge.to}
+                    value={newEdge.to || ''}
                     onChange={e => setNewEdge(prev => ({ ...prev, to: e.target.value }))}
                   >
                     <option value="">— select —</option>
@@ -443,7 +435,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
                 <div className="frow">
                   <label>Connection Type</label>
                   <select 
-                    value={newEdge.type}
+                    value={newEdge.type || ''}
                     onChange={e => setNewEdge(prev => ({ ...prev, type: e.target.value }))}
                   >
                     <option value="other">Other / General</option>
@@ -461,7 +453,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
                   <input 
                     type="text" 
                     placeholder="e.g. Controlled access to records" 
-                    value={newEdge.label}
+                    value={newEdge.label || ''}
                     onChange={e => setNewEdge(prev => ({ ...prev, label: e.target.value }))}
                   />
                 </div>
@@ -469,7 +461,7 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
               <div className="frow">
                 <label>Weight (1-3)</label>
                 <select 
-                  value={newEdge.weight}
+                  value={newEdge.weight || 2}
                   onChange={e => setNewEdge(prev => ({ ...prev, weight: parseInt(e.target.value) }))}
                 >
                   <option value="1">1 — Weak / Circumstantial</option>
@@ -510,6 +502,47 @@ export default function NodesTab({ project, setProject, initialEditingNodeId, on
           )}
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmAction && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm">
+          <div className="bg-panel border border-border p-8 rounded-xl shadow-2xl max-w-sm w-full text-center">
+            <h3 className="text-[18px] font-serif text-text mb-2">Are you sure?</h3>
+            <p className="text-[13px] text-muted mb-8 leading-relaxed">
+              {confirmAction.message}
+            </p>
+            <div className="flex gap-3">
+              <button 
+                className="btn btn-m flex-1"
+                onClick={() => setConfirmAction(null)}
+              >
+                CANCEL
+              </button>
+              <button 
+                className="btn btn-d flex-1"
+                onClick={() => {
+                  confirmAction.onConfirm();
+                  setConfirmAction(null);
+                }}
+              >
+                CONFIRM
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Toast Notification */}
+      {toast && (
+        <div 
+          className={cn(
+            "fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border text-[12px] font-bold uppercase tracking-widest bg-bg",
+            toast.type === 'success' ? "border-[#7a9e7e] text-[#7a9e7e]" : "border-[#a04040] text-[#a04040]"
+          )}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

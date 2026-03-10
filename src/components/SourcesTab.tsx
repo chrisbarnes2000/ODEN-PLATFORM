@@ -34,6 +34,14 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
   const [editingSourceId, setEditingSourceId] = useState<string | null>(null);
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  React.useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const [newSource, setNewSource] = useState<Partial<SourceData>>({
     title: '',
@@ -130,9 +138,9 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
   };
 
   const filteredSources = project.sources.filter(s => 
-    s.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.institution.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    s.notes.toLowerCase().includes(searchQuery.toLowerCase())
+    (s.title && s.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (s.institution && s.institution.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (s.notes && s.notes.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   return (
@@ -183,7 +191,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
             <input 
               type="text" 
               placeholder="e.g. NARA Finding Aid, FOIA Response..." 
-              value={newSource.title}
+              value={newSource.title || ''}
               onChange={e => setNewSource({ ...newSource, title: e.target.value })}
             />
           </div>
@@ -193,7 +201,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
             <input 
               type="text" 
               placeholder="e.g. USDA, FBI, State Archives" 
-              value={newSource.institution}
+              value={newSource.institution || ''}
               onChange={e => setNewSource({ ...newSource, institution: e.target.value })}
             />
           </div>
@@ -234,7 +242,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
               <input 
                 type="text" 
                 placeholder="https://..." 
-                value={newSource.url}
+                value={newSource.url || ''}
                 onChange={e => setNewSource({ ...newSource, url: e.target.value })}
               />
             </div>
@@ -245,7 +253,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
               <label>Date</label>
               <input 
                 type="date" 
-                value={newSource.date}
+                value={newSource.date || ''}
                 onChange={e => setNewSource({ ...newSource, date: e.target.value })}
               />
             </div>
@@ -254,7 +262,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
               <input 
                 type="text" 
                 placeholder="RG 165" 
-                value={newSource.rg}
+                value={newSource.rg || ''}
                 onChange={e => setNewSource({ ...newSource, rg: e.target.value })}
               />
             </div>
@@ -265,7 +273,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
             <textarea 
               placeholder="What does this source tell us? Any specific box or folder numbers?" 
               className="h-24"
-              value={newSource.notes}
+              value={newSource.notes || ''}
               onChange={e => setNewSource({ ...newSource, notes: e.target.value })}
             />
           </div>
@@ -288,7 +296,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
               AI Extract from Nodes
             </button>
             <button 
-              onClick={() => alert('File upload functionality would be integrated here to parse documents for sources.')}
+              onClick={() => setToast({ message: 'File upload functionality would be integrated here to parse documents for sources.', type: 'error' })}
               className="w-full py-3 mt-2 bg-surface border border-border rounded-lg text-[11px] font-bold uppercase tracking-widest text-muted hover:text-accent hover:border-accent transition-all flex items-center justify-center gap-2"
             >
               <Plus size={14} />
@@ -315,7 +323,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
                 type="text" 
                 placeholder="Search sources..." 
                 className="pl-10 pr-4 py-2 bg-surface border border-border rounded-lg text-[13px] w-full md:w-64 focus:border-accent outline-none"
-                value={searchQuery}
+                value={searchQuery || ''}
                 onChange={e => setSearchQuery(e.target.value)}
               />
             </div>
@@ -331,7 +339,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
               {filteredSources.map(src => {
                 const linkedNodes = project.nodes.filter(n => 
                   n.sources.some(ns => ns.url === src.url) || 
-                  n.description.toLowerCase().includes(src.url.toLowerCase())
+                  (n.description && src.url && n.description.toLowerCase().includes(src.url.toLowerCase()))
                 );
 
                 return (
@@ -421,6 +429,18 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
       >
         {isSidebarExpanded ? <X size={14} /> : <ChevronRight size={14} />}
       </button>
+
+      {/* Toast Notification */}
+      {toast && (
+        <div 
+          className={cn(
+            "fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border text-[12px] font-bold uppercase tracking-widest bg-bg",
+            toast.type === 'success' ? "border-[#7a9e7e] text-[#7a9e7e]" : "border-[#a04040] text-[#a04040]"
+          )}
+        >
+          {toast.message}
+        </div>
+      )}
     </div>
   );
 }

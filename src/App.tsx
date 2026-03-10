@@ -55,7 +55,7 @@ import ProposalTray from './components/ProposalTray';
 import SourcesTab from './components/SourcesTab';
 import GraphView from './components/GraphView';
 import NodePanel from './components/NodePanel';
-import { COLORS, EDGE_COLORS } from './constants';
+import { COLORS, EDGE_COLORS, getNodeColor } from './constants';
 
 function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -97,6 +97,15 @@ export default function App() {
   const [isGeneratingProposals, setIsGeneratingProposals] = useState(false);
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
 
   const handleGenerateProposals = async (contextText?: string, customProject?: ProjectData) => {
     setIsGeneratingProposals(true);
@@ -119,7 +128,7 @@ export default function App() {
       setActiveTab('proposals');
     } catch (error) {
       console.error('Failed to generate proposals:', error);
-      alert('Failed to generate AI proposals.');
+      setToast({ message: 'Failed to generate AI proposals.', type: 'error' });
     } finally {
       setIsGeneratingProposals(false);
     }
@@ -279,7 +288,7 @@ export default function App() {
       setImportResult(result);
     } catch (error) {
       console.error('Import failed:', error);
-      alert('Smart import failed. Please try again.');
+      setToast({ message: 'Smart import failed. Please try again.', type: 'error' });
     } finally {
       setIsImporting(false);
     }
@@ -341,7 +350,7 @@ export default function App() {
           setImportFile(null);
         } catch (err) {
           console.error('DOCX extraction failed:', err);
-          alert('Failed to extract text from DOCX.');
+          setToast({ message: 'Failed to extract text from DOCX.', type: 'error' });
         }
       };
       reader.readAsArrayBuffer(file);
@@ -477,7 +486,7 @@ export default function App() {
           <input 
             className="bg-surface border border-border text-text font-mono text-[14px] px-2.5 py-1 flex-1 outline-none focus:border-accent"
             placeholder="Name your investigation..."
-            value={project.caseName}
+            value={project.caseName || ''}
             onChange={e => setProject(prev => ({ ...prev, caseName: e.target.value }))}
           />
         </div>
@@ -706,6 +715,7 @@ export default function App() {
                 onApprove={handleApproveProposal}
                 onDismiss={handleDismissProposal}
                 onEdit={(p) => setEditingProposal(p)}
+                onViewInsights={() => setActiveTab('ai-insights')}
               />
             </motion.div>
           )}
@@ -876,9 +886,9 @@ export default function App() {
                           try {
                             const data = JSON.parse(event.target?.result as string);
                             setProject(data);
-                            alert('Investigation loaded successfully.');
+                            setToast({ message: 'Investigation loaded successfully.', type: 'success' });
                           } catch (err) {
-                            alert('Failed to load file. Invalid format.');
+                            setToast({ message: 'Failed to load file. Invalid format.', type: 'error' });
                           }
                         };
                         reader.readAsText(file);
@@ -892,12 +902,7 @@ export default function App() {
                   <p className="text-[12px] text-muted mb-4">Permanently delete all data and start a new investigation.</p>
                   <button 
                     className="btn btn-d flex items-center gap-2"
-                    onClick={() => {
-                      if (confirm('Are you sure? This will delete everything.')) {
-                        setProject(INITIAL_PROJECT);
-                        localStorage.removeItem('oden_project');
-                      }
-                    }}
+                    onClick={() => setShowResetConfirm(true)}
                   >
                     <Trash2 size={16} /> RESET EVERYTHING
                   </button>
@@ -945,7 +950,7 @@ export default function App() {
                       <textarea
                         className="w-full bg-bg border border-border text-text font-serif text-[14px] p-4 min-h-[200px] outline-none focus:border-accent leading-relaxed"
                         placeholder="Paste your research notes here..."
-                        value={importText}
+                        value={importText || ''}
                         onChange={e => {
                           setImportText(e.target.value);
                           setImportFile(null);
@@ -1097,100 +1102,125 @@ export default function App() {
                       </div>
 
                       <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {importResult.nodes.map((n, i) => (
-                          <div key={i} className={cn(
-                            "bg-surface border p-3 rounded group relative transition-opacity",
-                            n.included === false ? "opacity-40 grayscale border-border/20" : "border-border"
-                          )}>
-                            <div className="absolute top-2 right-2 flex items-center gap-2">
-                              <button 
-                                onClick={() => {
-                                  const newNodes = [...importResult.nodes];
-                                  newNodes[i].included = n.included === false ? true : false;
-                                  setImportResult({ ...importResult, nodes: newNodes });
-                                }}
-                                className={cn(
-                                  "p-1 rounded transition-colors",
-                                  n.included === false ? "text-muted hover:text-accent" : "text-accent hover:text-muted"
-                                )}
-                                title={n.included === false ? "Include" : "Exclude"}
-                              >
-                                {n.included === false ? <Plus size={12} /> : <X size={12} />}
-                              </button>
-                              <button 
-                                onClick={() => setImportResult(prev => prev ? { ...prev, nodes: prev.nodes.filter((_, idx) => idx !== i) } : null)}
-                                className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-2 gap-2 mb-2">
-                              <input 
-                                className="bg-bg border border-border rounded px-2 py-1 text-[11px] font-bold outline-none focus:border-accent"
-                                value={n.label}
-                                onChange={e => {
-                                  const newNodes = [...importResult.nodes];
-                                  newNodes[i].label = e.target.value;
-                                  setImportResult({ ...importResult, nodes: newNodes });
-                                }}
-                              />
-                              <div className="relative flex items-center">
-                                <div 
-                                  className="absolute left-2 w-2 h-2 rounded-full pointer-events-none" 
-                                  style={{ backgroundColor: COLORS[n.type as NodeType] || '#888' }} 
-                                />
-                                <select 
-                                  className="w-full bg-bg border border-border rounded pl-6 pr-2 py-1 text-[11px] outline-none focus:border-accent appearance-none"
-                                  value={n.type}
-                                  onChange={e => {
+                        {importResult.nodes.map((n, i) => {
+                          const nodeColor = getNodeColor(n.type);
+                          return (
+                            <div key={i} className={cn(
+                              "bg-surface border p-3 rounded group relative transition-all",
+                              n.included === false ? "opacity-40 grayscale border-border/20" : "border-border hover:border-accent/50 shadow-sm"
+                            )}
+                            style={{ 
+                              borderLeft: n.included !== false ? `4px solid ${nodeColor}` : undefined,
+                              backgroundColor: n.included !== false ? `${nodeColor}05` : undefined 
+                            }}>
+                              <div className="absolute top-2 right-2 flex items-center gap-2">
+                                <button 
+                                  onClick={() => {
                                     const newNodes = [...importResult.nodes];
-                                    newNodes[i].type = e.target.value;
+                                    newNodes[i].included = n.included === false ? true : false;
                                     setImportResult({ ...importResult, nodes: newNodes });
                                   }}
+                                  className={cn(
+                                    "p-1 rounded transition-colors",
+                                    n.included === false ? "text-muted hover:text-accent" : "text-accent hover:text-muted"
+                                  )}
+                                  title={n.included === false ? "Include" : "Exclude"}
                                 >
-                                  {Object.keys(COLORS).map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
-                                </select>
+                                  {n.included === false ? <Plus size={12} /> : <X size={12} />}
+                                </button>
+                                <button 
+                                  onClick={() => setImportResult(prev => prev ? { ...prev, nodes: prev.nodes.filter((_, idx) => idx !== i) } : null)}
+                                  className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </div>
-                            </div>
-                            <textarea 
-                              className="w-full bg-bg border border-border rounded px-2 py-1 text-[10px] min-h-[40px] outline-none focus:border-accent"
-                              value={n.description}
-                              onChange={e => {
-                                const newNodes = [...importResult.nodes];
-                                newNodes[i].description = e.target.value;
-                                setImportResult({ ...importResult, nodes: newNodes });
-                              }}
-                            />
-                            {n.reasoning && (
-                              <div className="mt-2 p-2 bg-accent/5 border border-accent/10 rounded text-[9px] text-accent italic">
-                                <strong>AI Reasoning:</strong> {n.reasoning}
-                              </div>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-[8px] uppercase text-muted font-bold">Confidence:</span>
-                              <div className="flex gap-1">
-                                {['low', 'medium', 'high'].map(level => (
-                                  <button
-                                    key={level}
-                                    onClick={() => {
+                              <div className="flex items-center gap-3 mb-3">
+                                <div 
+                                  className="w-4 h-4 rounded-full shrink-0 shadow-[0_0_10px_rgba(0,0,0,0.2)] border border-white/20" 
+                                  style={{ backgroundColor: nodeColor }} 
+                                  title={n.type}
+                                />
+                                <div className="flex-1">
+                                  <input 
+                                    className="w-full bg-transparent border-b border-border/50 px-0 py-1 text-[13px] font-bold outline-none focus:border-accent transition-colors"
+                                    value={n.label || ''}
+                                    onChange={e => {
                                       const newNodes = [...importResult.nodes];
-                                      newNodes[i].confidence = level;
+                                      newNodes[i].label = e.target.value;
                                       setImportResult({ ...importResult, nodes: newNodes });
                                     }}
-                                    className={cn(
-                                      "text-[8px] px-1.5 py-0.5 rounded uppercase font-bold transition-colors",
-                                      n.confidence === level 
-                                        ? (level === 'high' ? 'bg-green-500/20 text-green-400' : level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')
-                                        : 'bg-bg text-muted hover:text-text'
-                                    )}
+                                  />
+                                  <div className="text-[9px] uppercase tracking-widest text-muted mt-1 font-bold">
+                                    Entity Type: <span className="text-accent">{n.type}</span>
+                                  </div>
+                                </div>
+                                <div className="relative flex items-center w-24">
+                                  <div 
+                                    className="absolute left-1.5 w-1.5 h-1.5 rounded-full pointer-events-none" 
+                                    style={{ backgroundColor: getNodeColor(n.type) }} 
+                                  />
+                                  <select 
+                                    className="w-full bg-surface border border-border rounded pl-4 pr-1 py-1 text-[9px] outline-none focus:border-accent appearance-none uppercase font-bold tracking-tighter cursor-pointer"
+                                    value={n.type || ''}
+                                    onChange={e => {
+                                      const newNodes = [...importResult.nodes];
+                                      newNodes[i].type = e.target.value;
+                                      setImportResult({ ...importResult, nodes: newNodes });
+                                    }}
                                   >
-                                    {level}
-                                  </button>
-                                ))}
+                                    {Object.keys(COLORS).map(t => <option key={t} value={t}>{t}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                              
+                              <textarea 
+                                className="w-full bg-bg/50 border border-border/50 rounded p-2 text-[11px] leading-relaxed text-text outline-none focus:border-accent resize-none mb-3"
+                                rows={2}
+                                value={n.description || ''}
+                                onChange={e => {
+                                  const newNodes = [...importResult.nodes];
+                                  newNodes[i].description = e.target.value;
+                                  setImportResult({ ...importResult, nodes: newNodes });
+                                }}
+                                placeholder="Describe this entity's role..."
+                              />
+
+                              {n.reasoning && (
+                                <div className="mb-3 p-3 bg-accent/5 border-l-2 border-accent rounded-r text-[10px] text-text leading-relaxed">
+                                  <div className="flex items-center gap-1.5 mb-1 text-accent font-bold uppercase tracking-widest text-[8px]">
+                                    <Sparkles size={10} />
+                                    AI Analytical Insight
+                                  </div>
+                                  {n.reasoning}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-[8px] uppercase text-muted font-bold">Confidence:</span>
+                                <div className="flex gap-1">
+                                  {['low', 'medium', 'high'].map(level => (
+                                    <button
+                                      key={level}
+                                      onClick={() => {
+                                        const newNodes = [...importResult.nodes];
+                                        newNodes[i].confidence = level;
+                                        setImportResult({ ...importResult, nodes: newNodes });
+                                      }}
+                                      className={cn(
+                                        "text-[8px] px-1.5 py-0.5 rounded uppercase font-bold transition-colors",
+                                        n.confidence === level 
+                                          ? (level === 'high' ? 'bg-green-500/20 text-green-400' : level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')
+                                          : 'bg-bg text-muted hover:text-text'
+                                      )}
+                                    >
+                                      {level}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
 
@@ -1205,96 +1235,109 @@ export default function App() {
                         </button>
                       </div>
                       <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 custom-scrollbar">
-                        {importResult.edges.map((e, i) => (
-                          <div key={i} className={cn(
-                            "bg-surface border p-3 rounded group relative transition-opacity",
-                            e.included === false ? "opacity-40 grayscale border-border/20" : "border-border"
-                          )}>
-                            <div className="absolute top-2 right-2 flex items-center gap-2">
-                              <button 
-                                onClick={() => {
-                                  const newEdges = [...importResult.edges];
-                                  newEdges[i].included = e.included === false ? true : false;
-                                  setImportResult({ ...importResult, edges: newEdges });
-                                }}
-                                className={cn(
-                                  "p-1 rounded transition-colors",
-                                  e.included === false ? "text-muted hover:text-accent" : "text-accent hover:text-muted"
-                                )}
-                                title={e.included === false ? "Include" : "Exclude"}
-                              >
-                                {e.included === false ? <Plus size={12} /> : <X size={12} />}
-                              </button>
-                              <button 
-                                onClick={() => setImportResult(prev => prev ? { ...prev, edges: prev.edges.filter((_, idx) => idx !== i) } : null)}
-                                className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                              >
-                                <Trash2 size={12} />
-                              </button>
-                            </div>
-                            <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-2 mb-2">
-                              <input 
-                                className="bg-bg border border-border rounded px-2 py-1 text-[11px] outline-none focus:border-accent"
-                                placeholder="From Label"
-                                value={e.from}
-                                onChange={val => {
-                                  const newEdges = [...importResult.edges];
-                                  newEdges[i].from = val.target.value;
-                                  setImportResult({ ...importResult, edges: newEdges });
-                                }}
-                              />
-                              <ArrowRight size={12} className="text-accent" />
-                              <input 
-                                className="bg-bg border border-border rounded px-2 py-1 text-[11px] outline-none focus:border-accent"
-                                placeholder="To Label"
-                                value={e.to}
-                                onChange={val => {
-                                  const newEdges = [...importResult.edges];
-                                  newEdges[i].to = val.target.value;
-                                  setImportResult({ ...importResult, edges: newEdges });
-                                }}
-                              />
-                            </div>
-                            <input 
-                              className="w-full bg-bg border border-border rounded px-2 py-1 text-[10px] outline-none focus:border-accent"
-                              placeholder="Relationship Label"
-                              value={e.label}
-                              onChange={val => {
-                                const newEdges = [...importResult.edges];
-                                newEdges[i].label = val.target.value;
-                                setImportResult({ ...importResult, edges: newEdges });
-                              }}
-                            />
-                            {e.reasoning && (
-                              <div className="mt-2 p-2 bg-accent/5 border border-accent/10 rounded text-[9px] text-accent italic">
-                                <strong>AI Reasoning:</strong> {e.reasoning}
+                        {importResult.edges.map((e, i) => {
+                          const fromNode = importResult.nodes.find(n => n.label === e.from);
+                          const toNode = importResult.nodes.find(n => n.label === e.to);
+                          const fromColor = getNodeColor(fromNode?.type || '');
+                          const toColor = getNodeColor(toNode?.type || '');
+
+                          return (
+                            <div key={i} className={cn(
+                              "bg-surface border p-3 rounded group relative transition-opacity",
+                              e.included === false ? "opacity-40 grayscale border-border/20" : "border-border hover:border-accent/50 shadow-sm"
+                            )}>
+                              <div className="absolute top-2 right-2 flex items-center gap-2">
+                                <button 
+                                  onClick={() => {
+                                    const newEdges = [...importResult.edges];
+                                    newEdges[i].included = e.included === false ? true : false;
+                                    setImportResult({ ...importResult, edges: newEdges });
+                                  }}
+                                  className={cn(
+                                    "p-1 rounded transition-colors",
+                                    e.included === false ? "text-muted hover:text-accent" : "text-accent hover:text-muted"
+                                  )}
+                                  title={e.included === false ? "Include" : "Exclude"}
+                                >
+                                  {e.included === false ? <Plus size={12} /> : <X size={12} />}
+                                </button>
+                                <button 
+                                  onClick={() => setImportResult(prev => prev ? { ...prev, edges: prev.edges.filter((_, idx) => idx !== i) } : null)}
+                                  className="text-muted hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-1"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
                               </div>
-                            )}
-                            <div className="flex items-center gap-2 mt-2">
-                              <span className="text-[8px] uppercase text-muted font-bold">Confidence:</span>
-                              <div className="flex gap-1">
-                                {['low', 'medium', 'high'].map(level => (
-                                  <button
-                                    key={level}
-                                    onClick={() => {
+                              <div className="grid grid-cols-[1fr,auto,1fr] items-center gap-2 mb-2">
+                                <div className="flex items-center gap-2">
+                                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: fromColor }} />
+                                  <input 
+                                    className="w-full bg-bg border border-border rounded px-2 py-1 text-[11px] outline-none focus:border-accent"
+                                    placeholder="From Label"
+                                    value={e.from || ''}
+                                    onChange={val => {
                                       const newEdges = [...importResult.edges];
-                                      newEdges[i].confidence = level;
+                                      newEdges[i].from = val.target.value;
                                       setImportResult({ ...importResult, edges: newEdges });
                                     }}
-                                    className={cn(
-                                      "text-[8px] px-1.5 py-0.5 rounded uppercase font-bold transition-colors",
-                                      e.confidence === level 
-                                        ? (level === 'high' ? 'bg-green-500/20 text-green-400' : level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')
-                                        : 'bg-bg text-muted hover:text-text'
-                                    )}
-                                  >
-                                    {level}
-                                  </button>
-                                ))}
+                                  />
+                                </div>
+                                <ArrowRight size={12} className="text-accent" />
+                                <div className="flex items-center gap-2">
+                                  <input 
+                                    className="w-full bg-bg border border-border rounded px-2 py-1 text-[11px] outline-none focus:border-accent"
+                                    placeholder="To Label"
+                                    value={e.to || ''}
+                                    onChange={val => {
+                                      const newEdges = [...importResult.edges];
+                                      newEdges[i].to = val.target.value;
+                                      setImportResult({ ...importResult, edges: newEdges });
+                                    }}
+                                  />
+                                  <div className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: toColor }} />
+                                </div>
+                              </div>
+                              <input 
+                                className="w-full bg-bg border border-border rounded px-2 py-1 text-[10px] outline-none focus:border-accent"
+                                placeholder="Relationship Label"
+                                value={e.label || ''}
+                                onChange={val => {
+                                  const newEdges = [...importResult.edges];
+                                  newEdges[i].label = val.target.value;
+                                  setImportResult({ ...importResult, edges: newEdges });
+                                }}
+                              />
+                              {e.reasoning && (
+                                <div className="mt-2 p-2 bg-accent/5 border border-accent/10 rounded text-[9px] text-accent italic">
+                                  <strong>AI Reasoning:</strong> {e.reasoning}
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2 mt-2">
+                                <span className="text-[8px] uppercase text-muted font-bold">Confidence:</span>
+                                <div className="flex gap-1">
+                                  {['low', 'medium', 'high'].map(level => (
+                                    <button
+                                      key={level}
+                                      onClick={() => {
+                                        const newEdges = [...importResult.edges];
+                                        newEdges[i].confidence = level;
+                                        setImportResult({ ...importResult, edges: newEdges });
+                                      }}
+                                      className={cn(
+                                        "text-[8px] px-1.5 py-0.5 rounded uppercase font-bold transition-colors",
+                                        e.confidence === level 
+                                          ? (level === 'high' ? 'bg-green-500/20 text-green-400' : level === 'medium' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-red-500/20 text-red-400')
+                                          : 'bg-bg text-muted hover:text-text'
+                                      )}
+                                    >
+                                      {level}
+                                    </button>
+                                  ))}
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   </div>
@@ -1303,7 +1346,7 @@ export default function App() {
                     <h4 className="text-[10px] uppercase text-muted font-bold tracking-widest">Context Summary</h4>
                     <textarea 
                       className="w-full bg-surface border border-border p-4 font-serif text-[13px] leading-relaxed min-h-[150px] outline-none focus:border-accent"
-                      value={importResult.context}
+                      value={importResult.context || ''}
                       onChange={e => setImportResult({ ...importResult, context: e.target.value })}
                     />
                   </div>
@@ -1342,7 +1385,7 @@ export default function App() {
                       <label className="block text-[10px] uppercase text-muted font-bold mb-1">Label</label>
                       <input 
                         className="w-full bg-bg border border-border rounded px-3 py-2 text-[13px] outline-none focus:border-accent"
-                        value={editingProposal.data.label}
+                        value={editingProposal.data.label || ''}
                         onChange={e => setEditingProposal({ ...editingProposal, data: { ...editingProposal.data, label: e.target.value } })}
                       />
                     </div>
@@ -1351,11 +1394,11 @@ export default function App() {
                       <div className="relative flex items-center">
                         <div 
                           className="absolute left-2 w-2 h-2 rounded-full pointer-events-none" 
-                          style={{ backgroundColor: COLORS[editingProposal.data.type as NodeType] || '#888' }} 
+                          style={{ backgroundColor: getNodeColor(editingProposal.data.type) }} 
                         />
                         <select 
                           className="w-full bg-bg border border-border rounded pl-6 pr-2 py-2 text-[13px] outline-none focus:border-accent appearance-none"
-                          value={editingProposal.data.type}
+                          value={editingProposal.data.type || ''}
                           onChange={e => setEditingProposal({ ...editingProposal, data: { ...editingProposal.data, type: e.target.value } })}
                         >
                           {Object.keys(COLORS).map(t => <option key={t} value={t}>{t.toUpperCase()}</option>)}
@@ -1367,7 +1410,7 @@ export default function App() {
                     <label className="block text-[10px] uppercase text-muted font-bold mb-1">Description</label>
                     <textarea 
                       className="w-full bg-bg border border-border rounded px-3 py-2 text-[13px] outline-none focus:border-accent min-h-[100px]"
-                      value={editingProposal.data.description}
+                      value={editingProposal.data.description || ''}
                       onChange={e => setEditingProposal({ ...editingProposal, data: { ...editingProposal.data, description: e.target.value } })}
                     />
                   </div>
@@ -1392,6 +1435,63 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* Reset Confirmation Modal */}
+      <AnimatePresence>
+        {showResetConfirm && (
+          <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-panel border border-border p-8 rounded-xl shadow-2xl max-w-sm w-full text-center"
+            >
+              <AlertTriangle size={48} className="mx-auto text-[#a04040] mb-4" />
+              <h3 className="text-[18px] font-serif text-text mb-2">Reset Investigation?</h3>
+              <p className="text-[13px] text-muted mb-8 leading-relaxed">
+                This will permanently delete all nodes, edges, documents, and research. This action cannot be undone.
+              </p>
+              <div className="flex gap-3">
+                <button 
+                  className="btn btn-m flex-1"
+                  onClick={() => setShowResetConfirm(false)}
+                >
+                  CANCEL
+                </button>
+                <button 
+                  className="btn btn-d flex-1"
+                  onClick={() => {
+                    setProject(INITIAL_PROJECT);
+                    localStorage.removeItem('oden_project');
+                    setShowResetConfirm(false);
+                    setToast({ message: 'Investigation reset successfully.', type: 'success' });
+                  }}
+                >
+                  RESET ALL
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Toast Notification */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div 
+            initial={{ opacity: 0, y: 50 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 50 }}
+            className={cn(
+              "fixed bottom-6 left-1/2 -translate-x-1/2 z-[300] px-6 py-3 rounded-full shadow-2xl flex items-center gap-3 border text-[12px] font-bold uppercase tracking-widest",
+              toast.type === 'success' ? "bg-bg border-[#7a9e7e] text-[#7a9e7e]" : "bg-bg border-[#a04040] text-[#a04040]"
+            )}
+          >
+            {toast.type === 'success' ? <CheckCircle size={16} /> : <AlertTriangle size={16} />}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

@@ -25,6 +25,36 @@ export const COLORS: Record<NodeType, string> = {
   pattern: '#6a8aaa', // Slate
 };
 
+export function getNodeColor(type: string): string {
+  if (!type) return '#888888';
+  
+  const t = type.toLowerCase();
+  
+  // Handle blueprint ID mapping and common synonyms
+  if (t.includes('event') || t.includes('incident')) return COLORS.event;
+  if (t.includes('gap') || t.includes('missing') || t.includes('silence')) return COLORS.gap;
+  if (t.includes('actor') || t.includes('person') || t.includes('individual') || t.includes('suspect')) return COLORS.actor;
+  if (t.includes('institution') || t.includes('org') || t.includes('agency') || t.includes('company')) return COLORS.institution;
+  if (t.includes('location') || t.includes('place') || t.includes('site') || t.includes('address')) return COLORS.location;
+  if (t.includes('document') || t.includes('record') || t.includes('anchor') || t.includes('file') || t.includes('evidence')) return COLORS.document;
+  if (t.includes('claim') || t.includes('concept') || t.includes('theory') || t.includes('idea')) return COLORS.concept;
+  if (t.includes('media') || t.includes('narrative') || t.includes('photo') || t.includes('video')) return COLORS.media;
+  if (t.includes('financial') || t.includes('money') || t.includes('transaction') || t.includes('bank')) return COLORS.financial;
+  if (t.includes('object') || t.includes('item') || t.includes('artifact')) return COLORS.object;
+  if (t.includes('pattern') || t.includes('trend')) return COLORS.pattern;
+  if (t.includes('period') || t.includes('time') || t.includes('era')) return COLORS.period;
+  if (t.includes('witness')) return COLORS.witness;
+  if (t.includes('law') || t.includes('legal') || t.includes('statute')) return COLORS.law;
+  if (t.includes('science') || t.includes('forensic') || t.includes('data')) return COLORS.science;
+  if (t.includes('family') || t.includes('relative')) return COLORS.family;
+  if (t.includes('network') || t.includes('group') || t.includes('cell')) return COLORS.network;
+  if (t.includes('alias') || t.includes('name')) return COLORS.alias;
+  if (t.includes('rumor') || t.includes('hearsay')) return COLORS.rumor;
+  if (t.includes('relation') || t.includes('connection')) return COLORS.relation;
+
+  return (COLORS as any)[t] || '#888888';
+}
+
 export const EDGE_COLORS: Record<string, string> = {
   financial: '#a8c44a', // Lime
   personal: '#c4606a', // Coral

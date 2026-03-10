@@ -15,7 +15,7 @@ import {
   EyeOff
 } from 'lucide-react';
 import { NodeData, EdgeData, NodeType, ProjectData } from '../types';
-import { COLORS, EDGE_COLORS } from '../constants';
+import { COLORS, EDGE_COLORS, getNodeColor } from '../constants';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 
@@ -373,12 +373,12 @@ export default function GraphView({
             >
               <Circle
                 radius={(window.innerWidth < 768 ? 20 : 15) + (filteredEdges.filter(e => e.from === node.id || e.to === node.id).length * 2)}
-                fill={COLORS[node.type as NodeType] || '#888'}
+                fill={getNodeColor(node.type)}
                 stroke={selectedNodeIds.has(node.id) ? '#fff' : 'transparent'}
                 strokeWidth={2}
                 dash={node.placeholder ? [5, 5] : undefined}
                 shadowBlur={selectedNodeIds.has(node.id) || (isHeatmapMode && node.placeholder) ? 15 : 0}
-                shadowColor={isHeatmapMode && node.placeholder ? "#ff8800" : COLORS[node.type as NodeType]}
+                shadowColor={isHeatmapMode && node.placeholder ? "#ff8800" : getNodeColor(node.type)}
                 opacity={
                   isHeatmapMode 
                     ? (node.placeholder ? 1 : 0.2) 
@@ -570,7 +570,7 @@ export default function GraphView({
               type="range" 
               min={0} 
               max={dates.length - 1} 
-              value={timelineIndex}
+              value={timelineIndex ?? 0}
               onChange={(e) => setTimelineIndex(parseInt(e.target.value))}
               className="w-full accent-accent cursor-pointer"
             />
@@ -610,7 +610,7 @@ function LegendSection({ title, types, allNodes, spotlightedTypes, setSpotlighte
                 hiddenNodeTypes.has(type) && "opacity-30 grayscale"
               )}
             >
-              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: COLORS[type as NodeType] }} />
+              <div className="w-2 h-2 rounded-full shrink-0" style={{ backgroundColor: getNodeColor(type) }} />
               <span className="text-[9px] uppercase tracking-tighter truncate text-muted">{type}</span>
             </button>
             <button 

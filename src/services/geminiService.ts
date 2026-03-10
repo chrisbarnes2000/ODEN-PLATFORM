@@ -267,7 +267,11 @@ const PROPOSAL_SCHEMA = {
               category: { type: Type.STRING },
               body: { type: Type.STRING },
               placeholder: { type: Type.BOOLEAN }
-            }
+            },
+            // Note: Since 'data' structure varies by 'type', we can't easily use 'required' here 
+            // without complex oneOf/anyOf which isn't fully supported in all schema versions.
+            // However, we can add the most common ones or rely on the prompt.
+            // Let's add 'label' as it's almost always needed for node-related proposals.
           },
           justification: { type: Type.STRING },
           reasoning: { type: Type.STRING, description: "Detailed methodology reasoning for this proposal." },
@@ -332,8 +336,9 @@ export async function generateProposals(project: ProjectData, contextText?: stri
     7. 'create_context': Data: { heading: string, category: string, body: string }.
     
     IMPORTANT: 
-    - NEVER return "Untitled" or "?" for labels. 
-    - Extract specific names, dates, and institutions from the context.
+    - NEVER return "Untitled", "?", "Unknown", or "Actor" for labels. 
+    - You MUST extract specific names, dates, and institutions from the context.
+    - If a name is not explicitly mentioned but can be inferred (e.g., "The CEO of Bank X"), use a descriptive label (e.g., "CEO of Bank X").
     - If you are creating a node, assign it a specific 'type' from the blueprint or standard types (actor, event, institution, etc.).
     `;
 

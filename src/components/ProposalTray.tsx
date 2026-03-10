@@ -2,16 +2,17 @@ import React, { useState } from 'react';
 import { Sparkles, Check, X, Edit2, Info, BrainCircuit, Trash2, ChevronDown, ChevronUp, Plus, ExternalLink } from 'lucide-react';
 import { ProjectData, Proposal, NodeData, NodeType } from '../types';
 import { motion, AnimatePresence } from 'motion/react';
-import { COLORS } from '../constants';
+import { COLORS, getNodeColor } from '../constants';
 
 interface ProposalTrayProps {
   project: ProjectData;
   onApprove: (proposal: Proposal) => void;
   onDismiss: (proposalId: string) => void;
   onEdit: (proposal: Proposal) => void;
+  onViewInsights?: () => void;
 }
 
-export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: ProposalTrayProps) {
+export default function ProposalTray({ project, onApprove, onDismiss, onEdit, onViewInsights }: ProposalTrayProps) {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editData, setEditData] = useState<any>(null);
@@ -34,12 +35,41 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
       <div className="p-8 text-center border border-dashed border-border bg-surface/30 rounded-lg">
         <BrainCircuit size={48} className="mx-auto text-muted mb-4 opacity-20" />
         <p className="text-muted text-[13px]">No pending AI proposals. Use the "Generate Proposals" button to analyze your case.</p>
+        <div className="mt-6 pt-6 border-t border-border">
+          <p className="text-[11px] text-muted mb-3">Looking for the analytical briefing?</p>
+          <button 
+            onClick={onViewInsights}
+            className="text-accent text-[11px] font-bold uppercase tracking-widest hover:underline"
+          >
+            Check the AI Insights Tab
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
+      {project.briefing && (
+        <div className="bg-accent/5 border border-accent/20 rounded-lg p-4 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <BrainCircuit size={16} className="text-accent" />
+            <h4 className="text-[12px] font-bold uppercase tracking-widest text-accent">Case Briefing Snapshot</h4>
+          </div>
+          <div className="text-[11px] text-muted line-clamp-3 leading-relaxed mb-2 italic">
+            {project.briefing}
+          </div>
+          <div className="flex justify-end">
+            <button 
+              onClick={onViewInsights}
+              className="text-[9px] text-accent uppercase font-bold tracking-tighter hover:underline"
+            >
+              Full analysis available in AI Insights tab
+            </button>
+          </div>
+        </div>
+      )}
+
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <Sparkles size={16} className="text-accent" />
@@ -70,7 +100,7 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
                     </div>
                     {(p.type === 'create_node' || p.type === 'update_node') && p.data?.type && (
                       <div className="flex items-center gap-1.5 px-1.5 py-0.5 bg-surface border border-border rounded">
-                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[p.data.type as NodeType] || '#888' }} />
+                        <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getNodeColor(p.data.type) }} />
                         <span className="text-[9px] font-bold uppercase text-muted">{p.data.type}</span>
                       </div>
                     )}
@@ -85,7 +115,7 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
                     )}
                   </div>
                   <div className="text-[11px] text-accent font-mono">
-                    {getProposalSummary(p)}
+                    {getProposalSummary(p, project)}
                   </div>
                 </div>
               </div>
@@ -127,7 +157,7 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
                           <label className="text-[10px] uppercase text-muted">Justification</label>
                           <input 
                             className="w-full bg-surface border border-border rounded px-2 py-1 text-[12px] outline-none focus:border-accent"
-                            value={editData?.justification || p.justification}
+                            value={editData?.justification || p.justification || ''}
                             onChange={e => setEditData({ ...editData, justification: e.target.value })}
                           />
                         </div>
@@ -148,7 +178,7 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
                                 <div className="relative flex items-center">
                                   <div 
                                     className="absolute left-2 w-2 h-2 rounded-full pointer-events-none" 
-                                    style={{ backgroundColor: COLORS[editData?.type as NodeType] || '#888' }} 
+                                    style={{ backgroundColor: getNodeColor(editData?.type || '') }} 
                                   />
                                   <select 
                                     className="w-full bg-surface border border-border rounded pl-6 pr-2 py-1 text-[12px] outline-none focus:border-accent appearance-none"
@@ -283,7 +313,7 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
                             <div className="flex items-start gap-4">
                               <div 
                                 className="w-12 h-12 rounded-lg flex items-center justify-center shrink-0 shadow-lg"
-                                style={{ backgroundColor: COLORS[p.data.type as NodeType] || '#888' }}
+                                style={{ backgroundColor: getNodeColor(p.data.type) }}
                               >
                                 <Plus size={24} className="text-white" />
                               </div>
@@ -320,7 +350,7 @@ export default function ProposalTray({ project, onApprove, onDismiss, onEdit }: 
                                 <div className="p-2 bg-bg border border-border rounded">
                                   <div className="text-[8px] text-muted uppercase font-bold mb-1">New Type</div>
                                   <div className="flex items-center gap-2">
-                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: COLORS[p.data.type as NodeType] || '#888' }} />
+                                    <div className="w-2 h-2 rounded-full" style={{ backgroundColor: getNodeColor(p.data.type) }} />
                                     <div className="text-[11px] font-bold uppercase">{p.data.type}</div>
                                   </div>
                                 </div>
@@ -406,27 +436,38 @@ function ProposalIcon({ type }: { type: Proposal['type'] }) {
   }
 }
 
-function getProposalSummary(p: Proposal) {
+function getProposalSummary(p: Proposal, project: ProjectData) {
   try {
-    const color = (p.data?.type && COLORS[p.data.type as NodeType]) ? COLORS[p.data.type as NodeType] : null;
-    const colorDot = color ? <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: color }} /> : null;
+    const color = getNodeColor(p.data?.type || '');
+    const colorDot = <span className="inline-block w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: color }} />;
 
     switch (p.type) {
       case 'create_node': 
         return (
           <span className="flex items-center">
             {colorDot}
-            Add {p.data?.type?.toUpperCase() || 'NODE'}: "{p.data?.label || 'Untitled'}"
+            Add {p.data?.type?.toUpperCase() || 'NODE'}: <span className="text-text font-bold ml-1">"{p.data?.label || 'Untitled'}"</span>
           </span>
         );
       case 'create_edge': 
+        const fromNode = project.nodes.find(n => n.label === p.data?.fromLabel);
+        const toNode = project.nodes.find(n => n.label === p.data?.toLabel);
+        const fromColor = getNodeColor(fromNode?.type || '');
+        const toColor = getNodeColor(toNode?.type || '');
+
         return (
-          <span className="flex items-center gap-1.5">
-            Connect <span className="text-text font-bold">"{p.data?.fromLabel || '?'}"</span> 
-            <span className="text-muted">to</span> 
-            <span className="text-text font-bold">"{p.data?.toLabel || '?'}"</span> 
-            <span className="text-muted">as</span> 
-            <span className="text-accent font-bold">"{p.data?.label || 'connection'}"</span>
+          <span className="flex items-center gap-1.5 flex-wrap">
+            <span className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: fromColor }} />
+              <span className="text-text font-bold">"{p.data?.fromLabel || '?'}"</span> 
+            </span>
+            <span className="text-muted">→</span> 
+            <span className="text-accent font-bold">[{p.data?.label || 'connection'}]</span> 
+            <span className="text-muted">→</span> 
+            <span className="flex items-center gap-1">
+              <div className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: toColor }} />
+              <span className="text-text font-bold">"{p.data?.toLabel || '?'}"</span> 
+            </span>
           </span>
         );
       case 'merge_nodes': 
@@ -436,10 +477,12 @@ function getProposalSummary(p: Proposal) {
       case 'promote_placeholder': 
         return `Verify Placeholder node`;
       case 'update_node': 
+        const existingNode = project.nodes.find(n => n.id === p.data?.nodeId);
+        const updateColor = getNodeColor(p.data?.type || existingNode?.type || '');
         return (
           <span className="flex items-center">
-            {colorDot}
-            Update {p.data?.type?.toUpperCase() || 'NODE'}: "{p.data?.label || 'Node'}"
+            <div className="w-2 h-2 rounded-full mr-1.5" style={{ backgroundColor: updateColor }} />
+            Update {p.data?.type?.toUpperCase() || existingNode?.type?.toUpperCase() || 'NODE'}: <span className="text-text font-bold ml-1">"{p.data?.label || existingNode?.label || 'Node'}"</span>
           </span>
         );
       case 'create_context': 

@@ -117,7 +117,7 @@ export default function AIAssistant({ project }: { project: ProjectData }) {
               <div className="relative">
                 <input
                   type="text"
-                  value={input}
+                  value={input || ''}
                   onChange={e => setInput(e.target.value)}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                   placeholder="Ask about your case..."

@@ -12,7 +12,8 @@ import {
   Sparkles,
   Clock,
   Flame,
-  BrainCircuit
+  BrainCircuit,
+  AlertTriangle
 } from 'lucide-react';
 
 export default function QuickStartTab() {
@@ -107,11 +108,51 @@ export default function QuickStartTab() {
 
         <section>
           <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
-            <BrainCircuit size={20} /> 4. AI Insights & Briefings
+            <BrainCircuit size={20} /> 4. AI Insights & Synthesis
           </h3>
           <p className="text-[13px] text-muted leading-relaxed mb-4">
-            The <strong className="text-text uppercase">✧ AI Insights</strong> tab synthesizes your entire investigation into a narrative briefing. It identifies "Crossovers" between independent threads and highlights missing evidence. You can also talk directly to the "AI Analyst" to ask questions about your case data.
+            The <strong className="text-text uppercase">✧ AI Insights</strong> tab is your analytical partner. It offers three powerful tools:
           </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="bg-surface border border-border p-4 rounded">
+              <h4 className="text-[11px] font-bold uppercase text-accent mb-2 flex items-center gap-2">
+                <BrainCircuit size={14} /> Case Briefing
+              </h4>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Synthesizes your entire investigation into a narrative summary, identifying "Crossovers" and missing threads.
+              </p>
+            </div>
+            <div className="bg-surface border border-border p-4 rounded">
+              <h4 className="text-[11px] font-bold uppercase text-accent mb-2 flex items-center gap-2">
+                <Layers size={14} /> Structural Synthesis
+              </h4>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Identifies the "Hidden Structure" of your research, clustering nodes into thematic mental models.
+              </p>
+            </div>
+            <div className="bg-surface border border-border p-4 rounded">
+              <h4 className="text-[11px] font-bold uppercase text-accent mb-2 flex items-center gap-2">
+                <AlertTriangle size={14} /> Contradiction Scan
+              </h4>
+              <p className="text-[11px] text-muted leading-relaxed">
+                Scans your data for inconsistencies in dates, roles, or facts across different sources and documents.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        <section>
+          <h3 className="font-serif text-[18px] text-accent mb-4 flex items-center gap-2">
+            <FileText size={20} /> 5. Evidence Locker & Drafting
+          </h3>
+          <p className="text-[13px] text-muted leading-relaxed mb-4">
+            Manage your evidence and take action on your findings:
+          </p>
+          <ul className="space-y-3 text-[12px] text-muted mb-6 ml-4">
+            <li><strong className="text-text uppercase">Advanced Filtering:</strong> In the <strong className="text-text">Docs</strong> tab, filter evidence by Category, Status, or Institution.</li>
+            <li><strong className="text-text uppercase">FOIA Drafting:</strong> Select a <strong className="text-text">Gap</strong> node to generate a formal, legally-sound records request using AI.</li>
+            <li><strong className="text-text uppercase">Global Search:</strong> Use the search bar in the header to instantly find any node, document, or source across your entire project.</li>
+          </ul>
         </section>
 
         <section>

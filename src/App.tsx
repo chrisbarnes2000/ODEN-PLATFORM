@@ -863,6 +863,24 @@ export default function App() {
                   setActiveTab('docs');
                 }}
                 onDraftRequest={handleDraftRequest}
+                onLogCorrespondence={(node) => {
+                  const newSource: SourceData = {
+                    id: `src-log-${Date.now()}`,
+                    title: `Correspondence: ${node.label}`,
+                    institution: project.nodes.find(n => project.edges.some(e => (e.from === n.id && e.to === node.id && n.type === 'institution')))?.label || 'Target Institution',
+                    date: new Date().toISOString().split('T')[0],
+                    rg: 'N/A',
+                    url: '',
+                    notes: `Initial request logged for gap: ${node.label}`,
+                    type: 'email',
+                    status: 'draft',
+                    linkedNodeId: node.id,
+                    subject: `Record Request: ${node.label}`
+                  };
+                  setProject(prev => ({ ...prev, sources: [...prev.sources, newSource] }));
+                  setActiveTab('sources');
+                  setToast({ message: 'Correspondence logged. You can now edit the details.', type: 'success' });
+                }}
                 project={project}
               />
             </motion.div>
@@ -922,6 +940,7 @@ export default function App() {
                 project={project} 
                 onUpdateBriefing={(briefing) => setProject(prev => ({ ...prev, briefing }))}
                 onUpdateContradictions={(contradictions) => setProject(prev => ({ ...prev, contradictions }))}
+                onUpdateStructuralSynthesis={(structuralSynthesis) => setProject(prev => ({ ...prev, structuralSynthesis }))}
               />
             </motion.div>
           )}

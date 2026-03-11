@@ -29,6 +29,7 @@ interface NodePanelProps {
   onEditNode: (id: string) => void;
   onEditDoc: (id: string) => void;
   onDraftRequest: (node: NodeData) => void;
+  onLogCorrespondence: (node: NodeData) => void;
   project: ProjectData;
 }
 
@@ -40,6 +41,7 @@ export default function NodePanel({
   onEditNode, 
   onEditDoc, 
   onDraftRequest,
+  onLogCorrespondence,
   project 
 }: NodePanelProps) {
   if (!node) return null;
@@ -98,12 +100,20 @@ export default function NodePanel({
               <Edit2 size={10} /> Edit Details
             </button>
             {node.placeholder && (
-              <button 
-                onClick={() => onDraftRequest(node)}
-                className="text-[10px] text-accent hover:underline flex items-center gap-1 uppercase font-bold tracking-widest"
-              >
-                <Mail size={10} /> Draft Request
-              </button>
+              <>
+                <button 
+                  onClick={() => onDraftRequest(node)}
+                  className="text-[10px] text-accent hover:underline flex items-center gap-1 uppercase font-bold tracking-widest"
+                >
+                  <Mail size={10} /> Draft Request
+                </button>
+                <button 
+                  onClick={() => onLogCorrespondence(node)}
+                  className="text-[10px] text-accent hover:underline flex items-center gap-1 uppercase font-bold tracking-widest"
+                >
+                  <Edit2 size={10} /> Log Correspondence
+                </button>
+              </>
             )}
           </div>
         </div>

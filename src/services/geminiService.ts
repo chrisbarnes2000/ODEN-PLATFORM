@@ -528,6 +528,67 @@ export async function generateFOIARequest(project: ProjectData, gapNode: any): P
     return "Error generating request draft.";
   }
 }
+export async function structuralSynthesis(project: ProjectData): Promise<{ themes: any[], overview: string }> {
+  const model = "gemini-3-flash-preview";
+  
+  const prompt = `
+    Analyze the following collection of research nodes, documents, and connections. 
+    Your goal is to identify the "Hidden Structure" of this information.
+    
+    Nodes:
+    ${project.nodes.map(n => `- ${n.label} (${n.type}): ${n.description}`).join('\n')}
+    
+    Connections:
+    ${project.edges.map(e => {
+      const from = project.nodes.find(n => n.id === e.from)?.label;
+      const to = project.nodes.find(n => n.id === e.to)?.label;
+      return `- ${from} -> ${e.label} -> ${to}`;
+    }).join('\n')}
+    
+    TASK:
+    1. Identify 3-5 core "Themes" or "Clusters" that emerge from this data.
+    2. For each theme, explain why it's significant and which nodes belong to it.
+    3. Provide a "Mental Model" overview—a 2-sentence summary of how all this information fits together structurally.
+    
+    Return the analysis in JSON format.
+  `;
+
+  const SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+      overview: { type: Type.STRING, description: "A high-level summary of the project's structure." },
+      themes: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            title: { type: Type.STRING },
+            description: { type: Type.STRING },
+            relevance: { type: Type.STRING },
+            nodeLabels: { type: Type.ARRAY, items: { type: Type.STRING } }
+          }
+        }
+      }
+    },
+    required: ["overview", "themes"]
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: SCHEMA
+      }
+    });
+    return JSON.parse(response.text || "{}");
+  } catch (error) {
+    console.error("Structural Synthesis Error:", error);
+    return { overview: "Error analyzing structure.", themes: [] };
+  }
+}
+
 export async function detectContradictions(project: ProjectData): Promise<any[]> {
   const model = "gemini-3-flash-preview";
   

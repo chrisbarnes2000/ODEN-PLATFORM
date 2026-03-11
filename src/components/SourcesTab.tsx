@@ -12,7 +12,11 @@ import {
   FileText, 
   Search,
   ChevronRight,
-  Info
+  Info,
+  Send,
+  Clock,
+  CheckCircle2,
+  Archive
 } from 'lucide-react';
 import { ProjectData, SourceData } from '../types';
 import { extractUrlsFromNodes } from '../services/geminiService';
@@ -35,6 +39,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
+  const [viewMode, setViewMode] = useState<'all' | 'archival' | 'correspondence' | 'digital'>('all');
 
   React.useEffect(() => {
     if (toast) {
@@ -50,7 +55,8 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
     rg: 'N/A',
     url: 'https://',
     notes: '',
-    type: 'url'
+    type: 'url',
+    status: 'sent'
   });
 
   const handleExtractUrls = async () => {
@@ -115,7 +121,9 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
       type: newSource.type || 'url',
       sender: newSource.sender,
       recipient: newSource.recipient,
-      subject: newSource.subject
+      subject: newSource.subject,
+      status: newSource.status,
+      linkedNodeId: newSource.linkedNodeId
     };
 
     setProject({
@@ -137,11 +145,16 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
     setEditingSourceId(null);
   };
 
-  const filteredSources = project.sources.filter(s => 
-    (s.title && s.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (s.institution && s.institution.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (s.notes && s.notes.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const filteredSources = project.sources.filter(s => {
+    const matchesSearch = (s.title && s.title.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (s.institution && s.institution.toLowerCase().includes(searchQuery.toLowerCase())) ||
+      (s.notes && s.notes.toLowerCase().includes(searchQuery.toLowerCase()));
+    
+    if (viewMode === 'archival') return matchesSearch && s.type !== 'email' && s.type !== 'url';
+    if (viewMode === 'digital') return matchesSearch && s.type === 'url';
+    if (viewMode === 'correspondence') return matchesSearch && s.type === 'email';
+    return matchesSearch;
+  });
 
   return (
     <div className="flex h-full overflow-hidden bg-bg">
@@ -172,7 +185,7 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
                   newSource.type === 'url' ? "bg-accent/10 border-accent text-accent" : "bg-bg border-border text-muted"
                 )}
               >
-                <Globe size={12} /> URL
+                <Globe size={12} /> Archival
               </button>
               <button 
                 onClick={() => setNewSource({ ...newSource, type: 'email' })}
@@ -181,10 +194,45 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
                   newSource.type === 'email' ? "bg-blue-500/10 border-blue-500/50 text-blue-400" : "bg-bg border-border text-muted"
                 )}
               >
-                <Mail size={12} /> Email
+                <Mail size={12} /> Email Log
               </button>
             </div>
           </div>
+
+          {newSource.type === 'email' && (
+            <>
+              <div className="frow">
+                <label>Correspondence Status</label>
+                <div className="grid grid-cols-2 gap-2">
+                  {(['draft', 'sent', 'replied', 'closed'] as const).map(s => (
+                    <button
+                      key={s}
+                      onClick={() => setNewSource({ ...newSource, status: s })}
+                      className={cn(
+                        "py-1.5 rounded border text-[9px] font-bold uppercase tracking-tighter transition-all",
+                        newSource.status === s ? "bg-accent/10 border-accent text-accent" : "bg-bg border-border text-muted"
+                      )}
+                    >
+                      {s}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="frow">
+                <label>Link to Investigative Entity</label>
+                <select 
+                  className="w-full bg-bg border border-border rounded p-2 text-[12px] text-text outline-none focus:border-accent"
+                  value={newSource.linkedNodeId || ''}
+                  onChange={e => setNewSource({ ...newSource, linkedNodeId: e.target.value })}
+                >
+                  <option value="">No Link</option>
+                  {project.nodes.map(n => (
+                    <option key={n.id} value={n.id}>{n.label} ({n.type})</option>
+                  ))}
+                </select>
+              </div>
+            </>
+          )}
 
           <div className="frow">
             <label>Title</label>
@@ -315,7 +363,44 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
             <div>
               <h2 className="text-[24px] font-serif text-accent mb-1">Investigation Sources</h2>
-              <p className="text-muted text-[14px]">The archival and digital record supporting your investigation.</p>
+              <div className="flex items-center gap-4 mt-2">
+                <button 
+                  onClick={() => setViewMode('all')}
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-all",
+                    viewMode === 'all' ? "border-accent text-accent" : "border-transparent text-muted hover:text-text"
+                  )}
+                >
+                  All Sources
+                </button>
+                <button 
+                  onClick={() => setViewMode('archival')}
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-all",
+                    viewMode === 'archival' ? "border-accent text-accent" : "border-transparent text-muted hover:text-text"
+                  )}
+                >
+                  Archival Records
+                </button>
+                <button 
+                  onClick={() => setViewMode('correspondence')}
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-all",
+                    viewMode === 'correspondence' ? "border-accent text-accent" : "border-transparent text-muted hover:text-text"
+                  )}
+                >
+                  Correspondence Log
+                </button>
+                <button 
+                  onClick={() => setViewMode('digital')}
+                  className={cn(
+                    "text-[10px] font-bold uppercase tracking-widest pb-1 border-b-2 transition-all",
+                    viewMode === 'digital' ? "border-accent text-accent" : "border-transparent text-muted hover:text-text"
+                  )}
+                >
+                  Digital URLs
+                </button>
+              </div>
             </div>
             <div className="relative">
               <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
@@ -345,11 +430,25 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
                 return (
                   <div key={src.id} className="bg-panel border border-border p-5 rounded-xl hover:border-accent transition-all group relative">
                     <div className="flex justify-between items-start mb-3">
-                      <div className={cn(
-                        "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded",
-                        src.type === 'email' ? "bg-blue-500/20 text-blue-400" : "bg-accent/20 text-accent"
-                      )}>
-                        {src.type === 'email' ? 'EMAIL' : (src.institution || 'SOURCE')}
+                      <div className="flex items-center gap-2">
+                        <div className={cn(
+                          "text-[9px] font-bold uppercase tracking-widest px-2 py-0.5 rounded",
+                          src.type === 'email' ? "bg-blue-500/20 text-blue-400" : "bg-accent/20 text-accent"
+                        )}>
+                          {src.type === 'email' ? 'EMAIL' : (src.institution || 'SOURCE')}
+                        </div>
+                        {src.type === 'email' && src.status && (
+                          <div className={cn(
+                            "text-[8px] font-bold uppercase tracking-tighter px-1.5 py-0.5 border rounded flex items-center gap-1",
+                            src.status === 'replied' ? "border-green-500/50 text-green-400" : 
+                            src.status === 'sent' ? "border-blue-500/50 text-blue-400" : "border-muted text-muted"
+                          )}>
+                            {src.status === 'sent' && <Send size={8} />}
+                            {src.status === 'replied' && <CheckCircle2 size={8} />}
+                            {src.status === 'draft' && <Clock size={8} />}
+                            {src.status}
+                          </div>
+                        )}
                       </div>
                       <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <button 
@@ -392,6 +491,21 @@ export default function SourcesTab({ project, setProject, onSelectNode }: Source
                     <div className="text-[11px] text-muted/80 line-clamp-3 mb-4 italic leading-relaxed">
                       {src.notes}
                     </div>
+
+                    {src.linkedNodeId && (
+                      <div className="mb-4 p-2 bg-accent/5 border border-accent/10 rounded flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="w-1.5 h-1.5 rounded-full bg-accent" />
+                          <span className="text-[10px] text-accent font-bold uppercase tracking-tight">Linked to Gap/Entity</span>
+                        </div>
+                        <button 
+                          onClick={() => onSelectNode(src.linkedNodeId!)}
+                          className="text-[10px] text-muted hover:text-accent underline"
+                        >
+                          View Node
+                        </button>
+                      </div>
+                    )}
                     
                     {linkedNodes.length > 0 && (
                       <div className="mt-4 pt-4 border-t border-border/30">

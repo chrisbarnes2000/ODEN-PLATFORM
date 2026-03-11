@@ -76,6 +76,8 @@ export interface SourceData {
   sender?: string;
   recipient?: string;
   subject?: string;
+  status?: 'draft' | 'sent' | 'replied' | 'closed';
+  linkedNodeId?: string; // Link to a Gap or Institution
 }
 
 export interface Proposal {
@@ -114,4 +116,13 @@ export interface ProjectData {
   proposals: Proposal[];
   briefing?: string;
   contradictions?: Contradiction[];
+  structuralSynthesis?: {
+    overview: string;
+    themes: {
+      title: string;
+      description: string;
+      relevance: string;
+      nodeLabels: string[];
+    }[];
+  };
 }

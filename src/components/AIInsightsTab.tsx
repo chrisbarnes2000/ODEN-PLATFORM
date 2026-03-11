@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { BrainCircuit, Sparkles, RefreshCw, MessageSquare, Send, Bot, User, Info, Download, AlertTriangle } from 'lucide-react';
+import { BrainCircuit, Sparkles, RefreshCw, MessageSquare, Send, Bot, User, Info, Download, AlertTriangle, Layers } from 'lucide-react';
 import { ProjectData, Contradiction } from '../types';
-import { generateCaseNarrative, chatInvestigation, detectContradictions } from '../services/geminiService';
+import { generateCaseNarrative, chatInvestigation, detectContradictions, structuralSynthesis } from '../services/geminiService';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
 import { clsx, type ClassValue } from 'clsx';
@@ -15,11 +15,13 @@ interface AIInsightsTabProps {
   project: ProjectData;
   onUpdateBriefing: (briefing: string) => void;
   onUpdateContradictions: (contradictions: Contradiction[]) => void;
+  onUpdateStructuralSynthesis: (synthesis: any) => void;
 }
 
-export default function AIInsightsTab({ project, onUpdateBriefing, onUpdateContradictions }: AIInsightsTabProps) {
+export default function AIInsightsTab({ project, onUpdateBriefing, onUpdateContradictions, onUpdateStructuralSynthesis }: AIInsightsTabProps) {
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
+  const [synthesizing, setSynthesizing] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -58,6 +60,22 @@ export default function AIInsightsTab({ project, onUpdateBriefing, onUpdateContr
       console.error('Failed to scan contradictions', error);
     } finally {
       setScanning(false);
+    }
+  };
+
+  const synthesizeStructure = async () => {
+    setSynthesizing(true);
+    try {
+      const res = await structuralSynthesis(project);
+      onUpdateStructuralSynthesis(res);
+      setChatHistory(prev => [...prev, { 
+        role: 'model', 
+        content: `🧩 **STRUCTURAL SYNTHESIS COMPLETE**\n\nI've analyzed the underlying structure of your investigation. I've identified ${res.themes.length} core themes that organize your current data.` 
+      }]);
+    } catch (error) {
+      console.error('Failed to synthesize structure', error);
+    } finally {
+      setSynthesizing(false);
     }
   };
 
@@ -127,6 +145,14 @@ export default function AIInsightsTab({ project, onUpdateBriefing, onUpdateContr
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             </button>
             <button 
+              onClick={synthesizeStructure}
+              disabled={synthesizing}
+              className="p-1.5 text-muted hover:text-accent transition-colors disabled:opacity-50"
+              title="Synthesize Hidden Structure"
+            >
+              <Layers size={16} className={synthesizing ? 'animate-spin text-accent' : ''} />
+            </button>
+            <button 
               onClick={scanContradictions}
               disabled={scanning}
               className="p-1.5 text-muted hover:text-accent transition-colors disabled:opacity-50"
@@ -138,6 +164,36 @@ export default function AIInsightsTab({ project, onUpdateBriefing, onUpdateContr
         </div>
         
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          {/* Structural Synthesis Display */}
+          {project.structuralSynthesis && (
+            <div className="mb-8 space-y-4">
+              <div className="flex items-center gap-2 text-accent text-[11px] font-bold uppercase tracking-widest mb-2">
+                <Layers size={14} />
+                Structural Synthesis
+              </div>
+              <div className="p-5 bg-accent/5 border border-accent/20 rounded-xl">
+                <p className="text-[13px] text-text font-serif italic mb-4 leading-relaxed">
+                  "{project.structuralSynthesis.overview}"
+                </p>
+                <div className="grid grid-cols-1 gap-3">
+                  {project.structuralSynthesis.themes.map((theme, i) => (
+                    <div key={i} className="p-4 bg-surface border border-border rounded-lg shadow-sm">
+                      <div className="text-[12px] font-bold text-accent uppercase tracking-wider mb-1">{theme.title}</div>
+                      <div className="text-[12px] text-text mb-2 leading-relaxed">{theme.description}</div>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
+                        {theme.nodeLabels.map((label, li) => (
+                          <span key={li} className="text-[9px] px-1.5 py-0.5 bg-bg border border-border text-muted rounded uppercase font-bold">
+                            {label}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {project.contradictions && project.contradictions.length > 0 && (
             <div className="mb-8 space-y-3">
               <div className="flex items-center gap-2 text-accent text-[11px] font-bold uppercase tracking-widest mb-2">

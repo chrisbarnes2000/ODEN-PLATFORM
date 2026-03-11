@@ -24,12 +24,14 @@ import {
   EyeOff,
   Sparkles,
   Edit2,
-  BrainCircuit
+  BrainCircuit,
+  Mail,
+  RefreshCw
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Stage, Layer, Circle, Line, Text, Group, Rect } from 'react-konva';
 import * as d3 from 'd3-force';
-import ReactMarkdown from 'react-markdown';
+import Markdown from 'react-markdown';
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
 import { 
@@ -42,7 +44,16 @@ import {
   NodeType,
   Proposal
 } from './types';
-import { extractEntitiesFromText, extractEntitiesFromDocument, SmartImportResult, generateProposals } from './services/geminiService';
+import { 
+  extractEntitiesFromText, 
+  extractEntitiesFromDocument, 
+  SmartImportResult, 
+  generateProposals, 
+  generateCaseNarrative,
+  chatInvestigation,
+  detectContradictions,
+  generateFOIARequest
+} from './services/geminiService';
 
 import BlueprintTab from './components/BlueprintTab';
 import ContextTab from './components/ContextTab';
@@ -73,6 +84,91 @@ const INITIAL_PROJECT: ProjectData = {
   proposals: [],
 };
 
+const SearchResults = ({ query, project, onSelect }: { query: string, project: ProjectData, onSelect: (type: string, id: string) => void }) => {
+  const q = query.toLowerCase();
+
+  const results = {
+    nodes: project.nodes.filter(n => n.label.toLowerCase().includes(q) || n.description.toLowerCase().includes(q)),
+    docs: project.documents.filter(d => d.title.toLowerCase().includes(q) || d.description.toLowerCase().includes(q) || d.originalContent?.toLowerCase().includes(q)),
+    sources: project.sources.filter(s => s.title.toLowerCase().includes(q) || s.notes.toLowerCase().includes(q) || s.url.toLowerCase().includes(q)),
+    sections: project.sections.filter(s => s.heading.toLowerCase().includes(q) || s.body.toLowerCase().includes(q))
+  };
+
+  const total = results.nodes.length + results.docs.length + results.sources.length + results.sections.length;
+
+  if (total === 0) {
+    return (
+      <div className="p-8 text-center text-muted text-[12px]">
+        NO MATCHES FOUND FOR "{query.toUpperCase()}"
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      {results.nodes.length > 0 && (
+        <div>
+          <div className="px-2 py-1 text-[10px] text-muted uppercase font-bold tracking-tighter border-b border-border/30 mb-1">Nodes ({results.nodes.length})</div>
+          {results.nodes.map(n => (
+            <button key={n.id} onClick={() => onSelect('node', n.id)} className="w-full text-left p-2 hover:bg-white/5 transition-colors group">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-bold text-text group-hover:text-accent">{n.label}</span>
+                <span className="text-[10px] text-muted uppercase">{n.type}</span>
+              </div>
+              <div className="text-[11px] text-muted line-clamp-1">{n.description}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {results.docs.length > 0 && (
+        <div>
+          <div className="px-2 py-1 text-[10px] text-muted uppercase font-bold tracking-tighter border-b border-border/30 mb-1">Documents ({results.docs.length})</div>
+          {results.docs.map(d => (
+            <button key={d.id} onClick={() => onSelect('doc', d.id)} className="w-full text-left p-2 hover:bg-white/5 transition-colors group">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-bold text-text group-hover:text-accent">{d.title}</span>
+                <span className="text-[10px] text-muted uppercase">{d.category}</span>
+              </div>
+              <div className="text-[11px] text-muted line-clamp-1">{d.description}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {results.sections.length > 0 && (
+        <div>
+          <div className="px-2 py-1 text-[10px] text-muted uppercase font-bold tracking-tighter border-b border-border/30 mb-1">Narrative Sections ({results.sections.length})</div>
+          {results.sections.map(s => (
+            <button key={s.id} onClick={() => onSelect('section', s.id)} className="w-full text-left p-2 hover:bg-white/5 transition-colors group">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-bold text-text group-hover:text-accent">{s.heading}</span>
+                <span className="text-[10px] text-muted uppercase">{s.category}</span>
+              </div>
+              <div className="text-[11px] text-muted line-clamp-1">{s.body}</div>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {results.sources.length > 0 && (
+        <div>
+          <div className="px-2 py-1 text-[10px] text-muted uppercase font-bold tracking-tighter border-b border-border/30 mb-1">Sources ({results.sources.length})</div>
+          {results.sources.map(s => (
+            <button key={s.id} onClick={() => onSelect('source', s.id)} className="w-full text-left p-2 hover:bg-white/5 transition-colors group">
+              <div className="flex items-center justify-between">
+                <span className="text-[13px] font-bold text-text group-hover:text-accent">{s.title}</span>
+                <span className="text-[10px] text-muted uppercase">{s.type}</span>
+              </div>
+              <div className="text-[11px] text-muted line-clamp-1">{s.notes}</div>
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
 export default function App() {
   const [project, setProject] = useState<ProjectData>(() => {
     const saved = localStorage.getItem('oden_project');
@@ -98,6 +194,11 @@ export default function App() {
   const [editingProposal, setEditingProposal] = useState<Proposal | null>(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [foiaDraft, setFoiaDraft] = useState<string | null>(null);
+  const [isDraftingFOIA, setIsDraftingFOIA] = useState(false);
+  const [isScanningContradictions, setIsScanningContradictions] = useState(false);
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
@@ -294,6 +395,32 @@ export default function App() {
     }
   };
 
+  const handleDetectContradictions = async () => {
+    if (isScanningContradictions) return;
+    setIsScanningContradictions(true);
+    try {
+      const results = await detectContradictions(project);
+      setProject(prev => ({ ...prev, contradictions: results }));
+      setToast({ message: `Contradiction scan complete. Found ${results.length} issues.`, type: 'success' });
+    } catch (error) {
+      setToast({ message: 'Failed to scan contradictions.', type: 'error' });
+    } finally {
+      setIsScanningContradictions(false);
+    }
+  };
+
+  const handleDraftRequest = async (node: NodeData) => {
+    setIsDraftingFOIA(true);
+    try {
+      const draft = await generateFOIARequest(project, node);
+      setFoiaDraft(draft);
+    } catch (error) {
+      setToast({ message: 'Failed to generate FOIA draft.', type: 'error' });
+    } finally {
+      setIsDraftingFOIA(false);
+    }
+  };
+
   const handleSimpleUpload = () => {
     if (!importText.trim() && !importFile) return;
     
@@ -481,14 +608,76 @@ export default function App() {
             OBSERVATIONAL DIAGNOSTIC ENTRY NETWORK
           </span>
         </div>
-        <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+        <div className="flex items-center gap-2 max-w-md">
           <label className="text-muted text-[11px] tracking-[1px] whitespace-nowrap uppercase">Case:</label>
           <input 
-            className="bg-surface border border-border text-text font-mono text-[14px] px-2.5 py-1 flex-1 outline-none focus:border-accent"
+            className="bg-surface border border-border text-text font-mono text-[14px] px-2.5 py-1 w-full outline-none focus:border-accent"
             placeholder="Name your investigation..."
             value={project.caseName || ''}
             onChange={e => setProject(prev => ({ ...prev, caseName: e.target.value }))}
           />
+        </div>
+
+        <div className="flex-1" />
+
+        {/* Global Search */}
+        <div className="relative hidden md:flex items-center gap-2 px-3 py-1 bg-surface border border-border group focus-within:border-accent transition-colors">
+          <Search size={14} className="text-muted group-focus-within:text-accent" />
+          <input 
+            className="bg-transparent text-text font-mono text-[12px] w-40 lg:w-64 outline-none placeholder:text-muted/50"
+            placeholder="SEARCH EVERYTHING..."
+            value={searchQuery}
+            onChange={e => {
+              setSearchQuery(e.target.value);
+              if (e.target.value) setIsSearchOpen(true);
+            }}
+            onFocus={() => { if (searchQuery) setIsSearchOpen(true); }}
+          />
+          {searchQuery && (
+            <button onClick={() => { setSearchQuery(''); setIsSearchOpen(false); }} className="text-muted hover:text-accent">
+              <X size={14} />
+            </button>
+          )}
+
+          {/* Search Results Overlay */}
+          <AnimatePresence>
+            {isSearchOpen && searchQuery && (
+              <motion.div 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="absolute top-full right-0 mt-2 w-[400px] lg:w-[600px] bg-panel border border-border shadow-2xl z-[100] max-h-[70vh] overflow-y-auto"
+              >
+                <div className="p-4 border-b border-border bg-surface flex items-center justify-between">
+                  <span className="text-[11px] font-bold text-accent uppercase tracking-widest">Search Results</span>
+                  <button onClick={() => setIsSearchOpen(false)} className="text-muted hover:text-accent">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="p-2">
+                  <SearchResults 
+                    query={searchQuery} 
+                    project={project} 
+                    onSelect={(type, id) => {
+                      setIsSearchOpen(false);
+                      if (type === 'node') {
+                        setSelectedNodeIds(new Set([id]));
+                        setActiveTab('map');
+                      } else if (type === 'doc') {
+                        setEditingDocIdFromPanel(id);
+                        setActiveTab('docs');
+                      } else if (type === 'source') {
+                        setActiveTab('sources');
+                      } else if (type === 'section') {
+                        setSelectedSectionId(id);
+                        setActiveTab('context');
+                      }
+                    }}
+                  />
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
         <div className="text-muted text-[11px] tracking-[1px] whitespace-nowrap">
           NODES <span className="text-accent">{project.nodes.length}</span> &nbsp;
@@ -673,6 +862,7 @@ export default function App() {
                   setEditingDocIdFromPanel(id);
                   setActiveTab('docs');
                 }}
+                onDraftRequest={handleDraftRequest}
                 project={project}
               />
             </motion.div>
@@ -731,6 +921,7 @@ export default function App() {
               <AIInsightsTab 
                 project={project} 
                 onUpdateBriefing={(briefing) => setProject(prev => ({ ...prev, briefing }))}
+                onUpdateContradictions={(contradictions) => setProject(prev => ({ ...prev, contradictions }))}
               />
             </motion.div>
           )}
@@ -1435,6 +1626,64 @@ export default function App() {
           </div>
         </div>
       )}
+
+      {/* FOIA Draft Modal */}
+      <AnimatePresence>
+        {foiaDraft && (
+          <div className="fixed inset-0 z-[250] flex items-center justify-center p-4 bg-bg/80 backdrop-blur-sm">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="bg-panel border border-border rounded-xl shadow-2xl max-w-2xl w-full flex flex-col max-h-[90vh]"
+            >
+              <div className="p-4 border-b border-border bg-surface flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Mail size={18} className="text-accent" />
+                  <h3 className="text-[14px] font-bold uppercase tracking-widest">FOIA Request Draft</h3>
+                </div>
+                <button onClick={() => setFoiaDraft(null)} className="text-muted hover:text-accent">
+                  <X size={20} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                <div className="markdown-body prose prose-invert prose-sm max-w-none">
+                  <Markdown>{foiaDraft}</Markdown>
+                </div>
+              </div>
+              <div className="p-4 border-t border-border bg-surface flex gap-3">
+                <button 
+                  className="btn btn-m flex-1"
+                  onClick={() => {
+                    navigator.clipboard.writeText(foiaDraft);
+                    setToast({ message: 'Draft copied to clipboard.', type: 'success' });
+                  }}
+                >
+                  COPY TO CLIPBOARD
+                </button>
+                <button 
+                  className="btn btn-p flex-1"
+                  onClick={() => setFoiaDraft(null)}
+                >
+                  CLOSE
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Drafting Overlay */}
+      <AnimatePresence>
+        {isDraftingFOIA && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center bg-bg/60 backdrop-blur-md">
+            <div className="text-center">
+              <RefreshCw size={48} className="text-accent animate-spin mx-auto mb-4 opacity-50" />
+              <div className="text-[14px] font-serif italic text-accent animate-pulse">Drafting formal request...</div>
+            </div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {/* Reset Confirmation Modal */}
       <AnimatePresence>

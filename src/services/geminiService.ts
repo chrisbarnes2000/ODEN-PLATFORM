@@ -493,3 +493,102 @@ export async function chatInvestigation(project: ProjectData, message: string, h
   const response = await chat.sendMessage({ message });
   return response.text || "I'm sorry, I couldn't process that.";
 }
+
+export async function generateFOIARequest(project: ProjectData, gapNode: any): Promise<string> {
+  const model = "gemini-3-flash-preview";
+  
+  const prompt = `
+    Draft a formal FOIA (Freedom of Information Act) or public records request based on the following investigation gap.
+    
+    Investigation: ${project.caseName}
+    Gap Identified: ${gapNode.label}
+    Description of Gap: ${gapNode.description}
+    
+    Context of Investigation:
+    ${project.sections.map(s => `- ${s.heading}: ${s.body.substring(0, 200)}...`).join('\n')}
+    
+    TASK:
+    Write a professional, legally-sound request for records. 
+    1. Address it to the appropriate (inferred or placeholder) records officer.
+    2. Be specific about the records requested based on the gap description.
+    3. Include standard FOIA language regarding fee waivers (public interest) and expedited processing if applicable.
+    4. Keep it concise and ready for the user to customize.
+    
+    Tone: Formal, legal, and firm. Use Markdown.
+  `;
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+    });
+    return response.text || "Failed to generate request draft.";
+  } catch (error) {
+    console.error("FOIA Generation Error:", error);
+    return "Error generating request draft.";
+  }
+}
+export async function detectContradictions(project: ProjectData): Promise<any[]> {
+  const model = "gemini-3-flash-preview";
+  
+  const prompt = `
+    Analyze the following investigation data for contradictions, inconsistencies, or conflicting claims.
+    
+    Nodes:
+    ${project.nodes.map(n => `- ${n.label} (${n.type}): ${n.description}`).join('\n')}
+    
+    Documents:
+    ${project.documents.map(d => `- ${d.title}: ${d.description} (Original: ${d.originalContent?.substring(0, 500)})`).join('\n')}
+    
+    Sources:
+    ${project.sources.map(s => `- ${s.title}: ${s.notes}`).join('\n')}
+    
+    TASK:
+    Identify specific contradictions. A contradiction occurs when:
+    1. Two sources claim different dates for the same event.
+    2. An actor is described with conflicting roles or affiliations.
+    3. A document's summary conflicts with its original text or another document.
+    4. An entity's existence or identity is disputed between sources.
+    
+    Return a list of contradictions in JSON format.
+  `;
+
+  const CONTRADICTION_SCHEMA = {
+    type: Type.OBJECT,
+    properties: {
+      contradictions: {
+        type: Type.ARRAY,
+        items: {
+          type: Type.OBJECT,
+          properties: {
+            type: { type: Type.STRING, enum: ['date', 'role', 'fact', 'identity'] },
+            description: { type: Type.STRING },
+            severity: { type: Type.STRING, enum: ['high', 'medium', 'low'] },
+            involvedEntityIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+            involvedDocIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+            involvedSourceIds: { type: Type.ARRAY, items: { type: Type.STRING } },
+            justification: { type: Type.STRING }
+          },
+          required: ["type", "description", "severity", "justification"]
+        }
+      }
+    },
+    required: ["contradictions"]
+  };
+
+  try {
+    const response = await ai.models.generateContent({
+      model,
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        responseMimeType: "application/json",
+        responseSchema: CONTRADICTION_SCHEMA
+      }
+    });
+    const result = JSON.parse(response.text);
+    return result.contradictions.map((c: any) => ({ ...c, id: crypto.randomUUID() }));
+  } catch (error) {
+    console.error("Contradiction Detection Error:", error);
+    return [];
+  }
+}

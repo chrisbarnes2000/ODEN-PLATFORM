@@ -28,6 +28,7 @@ interface NodePanelProps {
   onGoToSection: (id: string) => void;
   onEditNode: (id: string) => void;
   onEditDoc: (id: string) => void;
+  onDraftRequest: (node: NodeData) => void;
   project: ProjectData;
 }
 
@@ -38,6 +39,7 @@ export default function NodePanel({
   onGoToSection, 
   onEditNode, 
   onEditDoc, 
+  onDraftRequest,
   project 
 }: NodePanelProps) {
   if (!node) return null;
@@ -88,12 +90,22 @@ export default function NodePanel({
             <Database size={10} /> Context & Description
           </div>
           <SmartText text={node.description} project={project} onSelectNode={onSelectNode} />
-          <button 
-            onClick={() => onEditNode(node.id)}
-            className="mt-3 text-[10px] text-accent hover:underline flex items-center gap-1 uppercase font-bold tracking-widest"
-          >
-            <Edit2 size={10} /> Edit Details
-          </button>
+          <div className="flex items-center gap-4 mt-3">
+            <button 
+              onClick={() => onEditNode(node.id)}
+              className="text-[10px] text-accent hover:underline flex items-center gap-1 uppercase font-bold tracking-widest"
+            >
+              <Edit2 size={10} /> Edit Details
+            </button>
+            {node.placeholder && (
+              <button 
+                onClick={() => onDraftRequest(node)}
+                className="text-[10px] text-accent hover:underline flex items-center gap-1 uppercase font-bold tracking-widest"
+              >
+                <Mail size={10} /> Draft Request
+              </button>
+            )}
+          </div>
         </div>
 
         {linkedSection && (

@@ -90,6 +90,17 @@ export interface Proposal {
   confidence?: 'high' | 'medium' | 'low';
 }
 
+export interface Contradiction {
+  id: string;
+  type: 'date' | 'role' | 'fact' | 'identity';
+  description: string;
+  severity: 'high' | 'medium' | 'low';
+  involvedEntityIds: string[];
+  involvedDocIds: string[];
+  involvedSourceIds: string[];
+  justification: string;
+}
+
 export interface ProjectData {
   caseName: string;
   nodes: NodeData[];
@@ -102,4 +113,5 @@ export interface ProjectData {
   aiInsight?: string;
   proposals: Proposal[];
   briefing?: string;
+  contradictions?: Contradiction[];
 }

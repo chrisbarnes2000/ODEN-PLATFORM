@@ -1,17 +1,25 @@
 import React, { useState, useEffect } from 'react';
-import { BrainCircuit, Sparkles, RefreshCw, MessageSquare, Send, Bot, User, Info, Download } from 'lucide-react';
-import { ProjectData } from '../types';
-import { generateCaseNarrative, chatInvestigation } from '../services/geminiService';
+import { BrainCircuit, Sparkles, RefreshCw, MessageSquare, Send, Bot, User, Info, Download, AlertTriangle } from 'lucide-react';
+import { ProjectData, Contradiction } from '../types';
+import { generateCaseNarrative, chatInvestigation, detectContradictions } from '../services/geminiService';
 import Markdown from 'react-markdown';
 import { motion, AnimatePresence } from 'motion/react';
+import { clsx, type ClassValue } from 'clsx';
+import { twMerge } from 'tailwind-merge';
+
+function cn(...inputs: ClassValue[]) {
+  return twMerge(clsx(inputs));
+}
 
 interface AIInsightsTabProps {
   project: ProjectData;
   onUpdateBriefing: (briefing: string) => void;
+  onUpdateContradictions: (contradictions: Contradiction[]) => void;
 }
 
-export default function AIInsightsTab({ project, onUpdateBriefing }: AIInsightsTabProps) {
+export default function AIInsightsTab({ project, onUpdateBriefing, onUpdateContradictions }: AIInsightsTabProps) {
   const [loading, setLoading] = useState(false);
+  const [scanning, setScanning] = useState(false);
   const [chatMessage, setChatMessage] = useState('');
   const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'model', content: string }[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -27,6 +35,29 @@ export default function AIInsightsTab({ project, onUpdateBriefing }: AIInsightsT
       console.error('Failed to generate briefing', error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const scanContradictions = async () => {
+    setScanning(true);
+    try {
+      const results = await detectContradictions(project);
+      onUpdateContradictions(results);
+      if (results.length > 0) {
+        setChatHistory(prev => [...prev, { 
+          role: 'model', 
+          content: `⚠️ **CONTRADICTION SCAN COMPLETE**\n\nI've identified ${results.length} potential inconsistencies in your data. You can review them in the list below.` 
+        }]);
+      } else {
+        setChatHistory(prev => [...prev, { 
+          role: 'model', 
+          content: `✅ **CONTRADICTION SCAN COMPLETE**\n\nNo major inconsistencies were detected in the current data set.` 
+        }]);
+      }
+    } catch (error) {
+      console.error('Failed to scan contradictions', error);
+    } finally {
+      setScanning(false);
     }
   };
 
@@ -95,10 +126,42 @@ export default function AIInsightsTab({ project, onUpdateBriefing }: AIInsightsT
             >
               <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
             </button>
+            <button 
+              onClick={scanContradictions}
+              disabled={scanning}
+              className="p-1.5 text-muted hover:text-accent transition-colors disabled:opacity-50"
+              title="Scan for Contradictions"
+            >
+              <AlertTriangle size={16} className={scanning ? 'animate-pulse text-accent' : ''} />
+            </button>
           </div>
         </div>
         
         <div className="flex-1 overflow-y-auto p-6 custom-scrollbar">
+          {project.contradictions && project.contradictions.length > 0 && (
+            <div className="mb-8 space-y-3">
+              <div className="flex items-center gap-2 text-accent text-[11px] font-bold uppercase tracking-widest mb-2">
+                <AlertTriangle size={14} />
+                Detected Contradictions ({project.contradictions.length})
+              </div>
+              {project.contradictions.map(c => (
+                <div key={c.id} className="p-4 bg-[#a04040]/5 border border-[#a04040]/20 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className={cn(
+                      "text-[9px] px-1.5 py-0.5 border uppercase tracking-widest font-bold",
+                      c.severity === 'high' ? "border-[#a04040] text-[#a04040]" : "border-muted text-muted"
+                    )}>
+                      {c.severity} severity
+                    </span>
+                    <span className="text-[10px] text-muted font-bold uppercase">{c.type}</span>
+                  </div>
+                  <div className="text-[13px] text-text font-medium mb-1">{c.description}</div>
+                  <div className="text-[11px] text-muted italic leading-relaxed">{c.justification}</div>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="mb-6 p-5 bg-accent/5 border border-accent/10 rounded-lg">
             <div className="flex items-start gap-3 mb-3">
               <Info size={18} className="text-accent shrink-0 mt-0.5" />

@@ -32,6 +32,11 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
   const [isSidebarExpanded, setIsSidebarExpanded] = useState(true);
   const [isFullEdit, setIsFullEdit] = useState(false);
   const [mobileView, setMobileView] = useState<'form' | 'list'>('list');
+  const [filterCategory, setFilterCategory] = useState<string>('All');
+  const [filterStatus, setFilterStatus] = useState<string>('All');
+  const [filterInstitution, setFilterInstitution] = useState<string>('All');
+  const [sortBy, setSortBy] = useState<'date' | 'title' | 'category'>('title');
+  const [docSearch, setDocSearch] = useState('');
   const [newDoc, setNewDoc] = useState<Partial<DocumentData>>({
     title: '',
     category: 'Correspondence',
@@ -97,6 +102,30 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
     });
     setIsFullEdit(false);
   };
+
+  const filteredDocs = project.documents
+    .filter(doc => {
+      const matchesCategory = filterCategory === 'All' || doc.category === filterCategory;
+      const matchesStatus = filterStatus === 'All' || doc.status === filterStatus;
+      const matchesInstitution = filterInstitution === 'All' || doc.institution === filterInstitution;
+      const matchesSearch = doc.title.toLowerCase().includes(docSearch.toLowerCase()) || 
+                            doc.description.toLowerCase().includes(docSearch.toLowerCase()) ||
+                            doc.institution?.toLowerCase().includes(docSearch.toLowerCase());
+      return matchesCategory && matchesStatus && matchesInstitution && matchesSearch;
+    })
+    .sort((a, b) => {
+      if (sortBy === 'title') return a.title.localeCompare(b.title);
+      if (sortBy === 'category') return a.category.localeCompare(b.category);
+      if (sortBy === 'date') {
+        const dateA = a.date ? new Date(a.date).getTime() : 0;
+        const dateB = b.date ? new Date(b.date).getTime() : 0;
+        return dateB - dateA;
+      }
+      return 0;
+    });
+
+  const institutions = Array.from(new Set(project.documents.map(d => d.institution).filter(Boolean))) as string[];
+  const categories = Array.from(new Set(project.documents.map(d => d.category))) as string[];
 
   const deleteDoc = (id: string) => {
     setProject(prev => ({
@@ -430,8 +459,78 @@ export default function DocsTab({ project, setProject, initialEditingDocId, onCl
           "flex-1 overflow-y-auto p-8 bg-bg",
           (isFullEdit || mobileView === 'form') ? "hidden" : "md:block"
         )}>
+          {/* Toolbar */}
+          <div className="mb-8 space-y-4">
+            <div className="flex flex-wrap items-center gap-4">
+              <div className="flex-1 min-w-[200px] relative">
+                <input 
+                  type="text" 
+                  placeholder="SEARCH DOCUMENTS..." 
+                  className="w-full bg-surface border border-border px-4 py-2 text-[11px] font-bold tracking-widest outline-none focus:border-accent transition-colors"
+                  value={docSearch}
+                  onChange={e => setDocSearch(e.target.value)}
+                />
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted font-bold uppercase tracking-tighter">Sort By:</span>
+                <select 
+                  className="bg-surface border border-border text-[11px] px-2 py-1 outline-none"
+                  value={sortBy}
+                  onChange={e => setSortBy(e.target.value as any)}
+                >
+                  <option value="title">TITLE</option>
+                  <option value="date">DATE</option>
+                  <option value="category">CATEGORY</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex flex-wrap items-center gap-4 border-t border-border/30 pt-4">
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted font-bold uppercase tracking-tighter">Category:</span>
+                <select 
+                  className="bg-surface border border-border text-[11px] px-2 py-1 outline-none"
+                  value={filterCategory}
+                  onChange={e => setFilterCategory(e.target.value)}
+                >
+                  <option value="All">ALL CATEGORIES</option>
+                  {categories.map(c => <option key={c} value={c}>{c.toUpperCase()}</option>)}
+                </select>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-[10px] text-muted font-bold uppercase tracking-tighter">Status:</span>
+                <select 
+                  className="bg-surface border border-border text-[11px] px-2 py-1 outline-none"
+                  value={filterStatus}
+                  onChange={e => setFilterStatus(e.target.value)}
+                >
+                  <option value="All">ALL STATUSES</option>
+                  <option value="received">RECEIVED</option>
+                  <option value="requested">REQUESTED</option>
+                  <option value="pending">PENDING</option>
+                  <option value="denied">DENIED</option>
+                </select>
+              </div>
+
+              {institutions.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-muted font-bold uppercase tracking-tighter">Institution:</span>
+                  <select 
+                    className="bg-surface border border-border text-[11px] px-2 py-1 outline-none"
+                    value={filterInstitution}
+                    onChange={e => setFilterInstitution(e.target.value)}
+                  >
+                    <option value="All">ALL INSTITUTIONS</option>
+                    {institutions.map(i => <option key={i} value={i}>{i.toUpperCase()}</option>)}
+                  </select>
+                </div>
+              )}
+            </div>
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {project.documents.map(doc => (
+            {filteredDocs.map(doc => (
               <div key={doc.id} className="border border-border p-4 bg-surface hover:border-border2 transition-all">
                 <div className="flex justify-between items-start gap-4 mb-3">
                   <div className="flex-1">

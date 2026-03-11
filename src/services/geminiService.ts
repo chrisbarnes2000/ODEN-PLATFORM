@@ -93,11 +93,34 @@ export async function extractEntitiesFromText(
   - GREEN 'institution' nodes: Controllers of records.
   - GOLD 'actor' nodes: People or individuals.
   
+  AVAILABLE NODE TYPES (Use these for 'type'):
+  - actor: Individuals, people, or suspects.
+  - institution: Organizations, companies, agencies, or groups.
+  - event: Specific occurrences, incidents, or actions.
+  - gap: Missing records, silences, or documented absences.
+  - location: Places, sites, addresses, or regions.
+  - document: Specific records, files, or pieces of evidence.
+  - financial: Money, transactions, or bank accounts.
+  - media: Photos, videos, news articles, or narratives.
+  - witness: People who saw or heard something.
+  - suspect: People under suspicion.
+  - law: Statutes, legal codes, or regulations.
+  - science: Data, forensic results, or scientific findings.
+  - family: Relatives or family connections.
+  - network: Groups or cells.
+  - period: Eras or specific timeframes.
+  - alias: Alternative names.
+  - rumor: Hearsay or unverified claims.
+  - pattern: Trends or recurring behaviors.
+  - concept: Theories, ideas, or abstract claims.
+  - object: Physical items or artifacts.
+  - case: ONLY for the core investigation claim itself.
+  
   IMPORTANT: 
   1. HOLISTIC ANALYSIS: Compare the new information with the ENTIRE existing investigation context (nodes, documents, sources, and narrative).
   2. If an entity already exists, use its EXACT label.
   3. Use the 'Blueprint Categories' provided below to determine the 'type' of each node. If a category matches the entity's role, use that category ID as the type. 
-  4. FLEXIBILITY: If an entity clearly belongs to a type not listed in the blueprint (e.g., location, media, financial, object), you may suggest a standard investigative type that best fits. Prioritize the blueprint, but do not be limited by it.
+  4. ACCURACY: Do NOT default to 'case'. Assign the most specific type from the list above.
   5. Provide a 'reasoning' field for each node, explaining why it was flagged (especially for RED events or BLUE gaps).
   6. Assign a 'confidence' score (high, medium, low).
   7. Extract all URLs, website links, and email metadata (sender, recipient, subject, date, url if available).
@@ -146,11 +169,34 @@ export async function extractEntitiesFromDocument(
   - GREEN 'institution' nodes: Controllers of records.
   - GOLD 'actor' nodes: People or individuals.
   
+  AVAILABLE NODE TYPES (Use these for 'type'):
+  - actor: Individuals, people, or suspects.
+  - institution: Organizations, companies, agencies, or groups.
+  - event: Specific occurrences, incidents, or actions.
+  - gap: Missing records, silences, or documented absences.
+  - location: Places, sites, addresses, or regions.
+  - document: Specific records, files, or pieces of evidence.
+  - financial: Money, transactions, or bank accounts.
+  - media: Photos, videos, news articles, or narratives.
+  - witness: People who saw or heard something.
+  - suspect: People under suspicion.
+  - law: Statutes, legal codes, or regulations.
+  - science: Data, forensic results, or scientific findings.
+  - family: Relatives or family connections.
+  - network: Groups or cells.
+  - period: Eras or specific timeframes.
+  - alias: Alternative names.
+  - rumor: Hearsay or unverified claims.
+  - pattern: Trends or recurring behaviors.
+  - concept: Theories, ideas, or abstract claims.
+  - object: Physical items or artifacts.
+  - case: ONLY for the core investigation claim itself.
+  
   IMPORTANT: 
   1. HOLISTIC ANALYSIS: Compare the new information with the ENTIRE existing investigation context (nodes, documents, sources, and narrative).
   2. If an entity already exists, use its EXACT label.
   3. Use the 'Blueprint Categories' provided below to determine the 'type' of each node. If a category matches the entity's role, use that category ID as the type.
-  4. FLEXIBILITY: If an entity clearly belongs to a type not listed in the blueprint (e.g., location, media, financial, object), you may suggest a standard investigative type that best fits. Prioritize the blueprint, but do not be limited by it.
+  4. ACCURACY: Do NOT default to 'case'. Assign the most specific type from the list above.
   5. Provide a 'reasoning' field for each node, explaining why it was flagged (especially for RED events or BLUE gaps).
   6. Assign a 'confidence' score (high, medium, low).
   7. Extract all URLs, website links, and email metadata (sender, recipient, subject, date, url if available).
@@ -305,6 +351,29 @@ export async function generateProposals(project: ProjectData, contextText?: stri
     
     New Context to Analyze: ${contextText || 'None provided'}
     
+    AVAILABLE NODE TYPES (Use these for 'type'):
+    - actor: Individuals, people, or suspects.
+    - institution: Organizations, companies, agencies, or groups.
+    - event: Specific occurrences, incidents, or actions.
+    - gap: Missing records, silences, or documented absences.
+    - location: Places, sites, addresses, or regions.
+    - document: Specific records, files, or pieces of evidence.
+    - financial: Money, transactions, or bank accounts.
+    - media: Photos, videos, news articles, or narratives.
+    - witness: People who saw or heard something.
+    - suspect: People under suspicion.
+    - law: Statutes, legal codes, or regulations.
+    - science: Data, forensic results, or scientific findings.
+    - family: Relatives or family connections.
+    - network: Groups or cells.
+    - period: Eras or specific timeframes.
+    - alias: Alternative names.
+    - rumor: Hearsay or unverified claims.
+    - pattern: Trends or recurring behaviors.
+    - concept: Theories, ideas, or abstract claims.
+    - object: Physical items or artifacts.
+    - case: ONLY for the core investigation claim itself.
+    
     ODEN Methodology Rules:
     - RED nodes ('case', 'event', 'suspect'): Core claims or high-stakes entities.
     - BLUE nodes ('gap'): Documented absences of expected records.
@@ -339,7 +408,7 @@ export async function generateProposals(project: ProjectData, contextText?: stri
     - NEVER return "Untitled", "?", "Unknown", or "Actor" for labels. 
     - You MUST extract specific names, dates, and institutions from the context.
     - If a name is not explicitly mentioned but can be inferred (e.g., "The CEO of Bank X"), use a descriptive label (e.g., "CEO of Bank X").
-    - If you are creating a node, assign it a specific 'type' from the blueprint or standard types (actor, event, institution, etc.).
+    - If you are creating a node, assign it a specific 'type' from the list above.
     `;
 
   const response = await ai.models.generateContent({

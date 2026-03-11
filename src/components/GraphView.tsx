@@ -176,10 +176,10 @@ export default function GraphView({
     }
 
     const simulation = d3.forceSimulation(d3Nodes)
-      .force('link', d3.forceLink(d3Edges).id((d: any) => d.id).distance(120).strength(0.5))
-      .force('charge', d3.forceManyBody().strength(-400))
+      .force('link', d3.forceLink(d3Edges).id((d: any) => d.id).distance(180).strength(0.5))
+      .force('charge', d3.forceManyBody().strength(-800))
       .force('center', d3.forceCenter(dimensions.width / 2, dimensions.height / 2))
-      .force('collision', d3.forceCollide().radius(60))
+      .force('collision', d3.forceCollide().radius(80))
       .force('x', d3.forceX(dimensions.width / 2).strength(0.05))
       .force('y', d3.forceY(dimensions.height / 2).strength(0.05));
 
@@ -222,6 +222,32 @@ export default function GraphView({
       });
       setZoom(1);
     }
+  };
+
+  const handleZoom = (newScale: number) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const oldScale = stage.scaleX();
+    const center = {
+      x: dimensions.width / 2,
+      y: dimensions.height / 2
+    };
+
+    const relatedPoint = {
+      x: (center.x - stage.x()) / oldScale,
+      y: (center.y - stage.y()) / oldScale,
+    };
+
+    stage.scale({ x: newScale, y: newScale });
+    setZoom(newScale);
+
+    const newPos = {
+      x: center.x - relatedPoint.x * newScale,
+      y: center.y - relatedPoint.y * newScale,
+    };
+    stage.position(newPos);
+    stage.batchDraw();
   };
 
   const handleWheel = (e: any) => {
@@ -456,13 +482,13 @@ export default function GraphView({
             </button>
             <div className="flex gap-1">
               <button 
-                onClick={() => setZoom(z => Math.min(z + 0.1, 2))}
+                onClick={() => handleZoom(Math.min(zoom + 0.1, 2))}
                 className="flex-1 bg-panel/90 border border-border p-2 text-muted hover:text-accent transition-colors shadow-lg text-[10px] font-bold"
               >
                 +
               </button>
               <button 
-                onClick={() => setZoom(z => Math.max(z - 0.1, 0.1))}
+                onClick={() => handleZoom(Math.max(zoom - 0.1, 0.1))}
                 className="flex-1 bg-panel/90 border border-border p-2 text-muted hover:text-accent transition-colors shadow-lg text-[10px] font-bold"
               >
                 -
